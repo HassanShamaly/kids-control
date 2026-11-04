@@ -648,10 +648,10 @@ public class MonitorService extends Service {
     private long lastTapTs = 0L;
     private void onOverlayTap() {
         long now = System.currentTimeMillis();
-        if (now - lastTapTs > 2500L) secretTaps = 0; // يجب أن تكون متتالية
+        if (now - lastTapTs > 1200L) secretTaps = 0; // ضغطات سريعة متتالية // يجب أن تكون متتالية
         lastTapTs = now;
         secretTaps++;
-        if (secretTaps >= 5) {
+        if (secretTaps >= 10) {
             secretTaps = 0;
             if (bgHandler != null) bgHandler.post(this::startEmergencyUnlock);
         }

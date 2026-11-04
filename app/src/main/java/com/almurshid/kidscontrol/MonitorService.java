@@ -189,17 +189,7 @@ public class MonitorService extends Service {
             return START_STICKY;
         }
         if (ACTION_EMERGENCY.equals(action)) {
-            // أزِل الطبقة أولاً ثم افتح شاشة إدخال الرقم فوق كل شيء
-            if (bgHandler != null) bgHandler.post(() -> {
-                overlaySuppressUntil = System.currentTimeMillis() + 60_000L;
-                postRemoveOverlay();
-                uiHandler.postDelayed(() -> {
-                    Intent u = new Intent(this, UnlockActivity.class)
-                            .putExtra("emergency", true)
-                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-                    try { startActivity(u); } catch (Throwable ignored) { }
-                }, 250L);
-            });
+            if (bgHandler != null) bgHandler.post(this::startEmergencyUnlock);
             return START_STICKY;
         }
         if (ACTION_START.equals(action)) {
@@ -555,8 +545,9 @@ public class MonitorService extends Service {
         uiHandler.post(() -> setOverlayBreak(txt));
         if (now - lastNotifTs >= 5_000L) {
             lastNotifTs = now;
+            // لا زر في الإشعار: مدخل الطوارئ صار إيماءة سرّية (5 ضغطات على شاشة القفل)
             notify(buildNotification(getString(R.string.n_break),
-                    getString(R.string.break_msg, fmt(rem)), null, ACT_BREAK));
+                    getString(R.string.break_msg, fmt(rem)), null, ACT_NONE));
         }
     }
 
@@ -614,9 +605,11 @@ public class MonitorService extends Service {
                 : getString(R.string.lock_games));
         android.widget.Button bu = overlay.findViewById(R.id.btn_unlock);
         View sub = overlay.findViewById(R.id.lock_sub);
+        // إيماءة سرّية: 5 ضغطات متتالية على الطبقة تفتح مدخل الطوارئ (تعمل في القفل والاستراحة)
+        secretTaps = 0;
+        overlay.setOnClickListener(v -> onOverlayTap());
         if (onBreak) {
-            // أثناء الاستراحة: عدّاد فقط بلا زر ولا نص مساعد، ليظن الطفل ألا حلّ.
-            // مدخل الطوارئ لولي الأمر من الإشعار.
+            // أثناء الاستراحة: عدّاد فقط بلا زر، ليظن الطفل ألا حلّ. الطوارئ بالإيماءة السرّية.
             bu.setVisibility(View.GONE);
             if (sub != null) ((TextView) sub).setText(R.string.break_sub);
         } else {
@@ -636,6 +629,32 @@ public class MonitorService extends Service {
                 PixelFormat.OPAQUE);
         lp.gravity = Gravity.CENTER;
         try { wm.addView(overlay, lp); } catch (Throwable t) { overlay = null; }
+    }
+
+    /** مدخل الطوارئ (إيماءة 5 ضغطات أو الإشعار): يُزيل الطبقة ثم يطلب الرقم السري فوق كل شيء. */
+    private void startEmergencyUnlock() {
+        overlaySuppressUntil = System.currentTimeMillis() + 60_000L;
+        postRemoveOverlay();
+        uiHandler.postDelayed(() -> {
+            Intent u = new Intent(this, UnlockActivity.class)
+                    .putExtra("emergency", true)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            try { startActivity(u); } catch (Throwable ignored) { }
+        }, 250L);
+    }
+
+    // إيماءة سرّية: 5 ضغطات متتالية على شاشة القفل تفتح مدخل الطوارئ (بلا أي أثر مرئي)
+    private int secretTaps = 0;
+    private long lastTapTs = 0L;
+    private void onOverlayTap() {
+        long now = System.currentTimeMillis();
+        if (now - lastTapTs > 2500L) secretTaps = 0; // يجب أن تكون متتالية
+        lastTapTs = now;
+        secretTaps++;
+        if (secretTaps >= 5) {
+            secretTaps = 0;
+            if (bgHandler != null) bgHandler.post(this::startEmergencyUnlock);
+        }
     }
 
     private void removeOverlay() {

@@ -1,6 +1,5 @@
 name: Build APK
 
-# يبني ملف APK موقّعاً عند كل دفعة إلى main، وينشره في صفحة الإصدارات.
 on:
   push:
     branches: [ main ]
@@ -22,8 +21,8 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Accept Android SDK licenses
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null 2>&1 || true
 
       - name: Decode keystore
         run: echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.jks"
@@ -39,7 +38,7 @@ jobs:
           echo "name=$VN" >> "$GITHUB_OUTPUT"
 
       - name: Build signed release APK
-        run: ./gradlew assembleRelease --no-daemon
+        run: chmod +x ./gradlew && ./gradlew assembleRelease --no-daemon --stacktrace
         env:
           KEYSTORE_FILE: ${{ runner.temp }}/release.jks
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}

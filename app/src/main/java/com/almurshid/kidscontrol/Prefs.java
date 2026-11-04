@@ -226,6 +226,13 @@ public class Prefs {
         e.apply();
     }
 
+    // ===== نافذة تثبيت التحديث (خلالها لا تحرس خدمة الحماية شاشة التثبيت) =====
+    private static final String K_INSTALL_UNTIL = "install_until";
+    public void setInstallUntil(long ts) { sp.edit().putLong(K_INSTALL_UNTIL, ts).apply(); }
+    public boolean installActive() {
+        return System.currentTimeMillis() < sp.getLong(K_INSTALL_UNTIL, 0L);
+    }
+
     // ===== وضع ولي الأمر (يسمح بفتح إعدادات التطبيق في النظام مؤقتاً) =====
     public void setParentUntil(long ts) { sp.edit().putLong(K_PARENT_UNTIL, ts).apply(); }
     public boolean parentModeActive() {

@@ -104,6 +104,8 @@ public class UpdateChecker {
 
     private static void installApk(Activity act, File apk) {
         try {
+            // افتح نافذة تثبيت (5 دقائق) حتى لا تحرس خدمة الحماية شاشة التحديث
+            new Prefs(act).setInstallUntil(System.currentTimeMillis() + 5 * 60_000L);
             Uri uri = FileProvider.getUriForFile(act,
                     act.getPackageName() + ".fileprovider", apk);
             Intent i = new Intent(Intent.ACTION_VIEW);

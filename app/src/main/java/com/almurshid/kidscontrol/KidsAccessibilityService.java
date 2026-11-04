@@ -83,7 +83,12 @@ public class KidsAccessibilityService extends AccessibilityService {
                 }
             }
 
-            if (GUARDED.contains(pkg) || pkg.contains("packageinstaller")
+            boolean installer = pkg.contains("packageinstaller");
+            // أثناء نافذة تحديث التطبيق لا نحرس شاشة التثبيت، فلا يتعارض القفل مع التحديث
+            if (installer && prefs != null && prefs.installActive()) {
+                return;
+            }
+            if (GUARDED.contains(pkg) || installer
                     || pkg.contains("permissioncontroller")) {
                 guard(type == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED);
             }

@@ -1,0 +1,28 @@
+# Android / Gradle
+*.iml
+.gradle/
+/local.properties
+/.idea/
+.DS_Store
+/build/
+/app/build/
+/captures
+.externalNativeBuild
+.cxx
+
+# Build outputs / APKs
+*.apk
+*.aab
+
+# Secrets & keystores (NEVER commit)
+*.jks
+*.keystore
+_enc_secrets.json
+keystore_secrets.txt
+
+# Temp archives / helper files
+*.tgz
+_to_delete/
+_src_snapshot*
+_cp*.tgz
+_repo_src.tgz

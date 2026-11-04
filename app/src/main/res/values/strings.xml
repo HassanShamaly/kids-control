@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">تحكم الأطفال</string>
+
+    <!-- الإعدادات -->
+    <string name="limit_youtube">تفعيل الحد على الفيديو (يوتيوب، تيك توك، إنستغرام، المتصفح…)</string>
+    <string name="limit_games">تفعيل الحد على الألعاب</string>
+    <string name="minutes_label">المدة المسموحة (بالدقائق):</string>
+    <string name="cooldown_label">مدة الراحة لإعادة التصفير</string>
+    <string name="cooldown_hint">لا يُصفَّر العدّاد إلا إذا ابتعد الطفل عن الفيديو والألعاب هذه المدة (بالدقائق). تمنع التحايل بالخروج والدخول.</string>
+    <string name="save_settings">حفظ الإعدادات</string>
+    <string name="change_pin">تغيير الرقم السري</string>
+    <string name="saved">تم الحفظ</string>
+
+    <!-- الصلاحيات -->
+    <string name="permissions">الصلاحيات المطلوبة</string>
+    <string name="grant_usage">منح صلاحية «الوصول إلى بيانات الاستخدام»</string>
+    <string name="grant_overlay">منح صلاحية «العرض فوق التطبيقات»</string>
+    <string name="usage_status">الوصول للاستخدام: %1$s</string>
+    <string name="overlay_status">العرض فوق التطبيقات: %1$s</string>
+    <string name="service_status">حالة المراقبة: %1$s</string>
+    <string name="granted">ممنوحة ✓</string>
+    <string name="not_granted">غير ممنوحة ✗</string>
+    <string name="running">تعمل</string>
+    <string name="off">متوقفة</string>
+
+    <!-- التشغيل -->
+    <string name="start_monitor">تشغيل المراقبة</string>
+    <string name="stop_monitor">إيقاف المراقبة</string>
+    <string name="started">بدأت المراقبة</string>
+    <string name="stopped">تم إيقاف المراقبة</string>
+    <string name="need_usage">فعّل أولاً صلاحية الوصول إلى بيانات الاستخدام</string>
+    <string name="need_overlay">فعّل أولاً صلاحية العرض فوق التطبيقات</string>
+
+    <!-- البوابة -->
+    <string name="set_pin_title">إنشاء رقم سري</string>
+    <string name="set_pin_msg">اختر رقماً سرياً (4 أرقام على الأقل) لحماية الإعدادات.</string>
+    <string name="enter_pin_title">أدخل الرقم السري</string>
+    <string name="pin_too_short">الرقم قصير جداً (4 أرقام على الأقل)</string>
+    <string name="pin_wrong">الرقم السري غير صحيح</string>
+    <string name="gate_title">تأكيد الهوية</string>
+    <string name="gate_sub">افتح بالبصمة للدخول إلى الإعدادات</string>
+    <string name="auth_failed">فشل التحقق</string>
+
+    <!-- القفل -->
+    <string name="lock_youtube">انتهى وقت مشاهدة الفيديو</string>
+    <string name="lock_games">انتهى وقت اللعب</string>
+    <string name="lock_sub">الشاشة مقفلة. يلزم بصمة ولي الأمر للمتابعة.</string>
+    <string name="unlock_btn">فتح بالبصمة</string>
+    <string name="unlock_title">فتح القفل</string>
+    <string name="unlock_sub">ضع بصمة ولي الأمر للسماح بالمتابعة</string>
+    <string name="biometric_unavailable">البصمة غير متاحة على هذا الجهاز</string>
+
+    <!-- الإشعار -->
+    <string name="notif_channel">Usage monitoring</string>
+    <string name="notif_title">Kids Control</string>
+    <string name="notif_text">Watching video and game time</string>
+
+    <!-- عام -->
+    <string name="save">حفظ</string>
+    <string name="ok">موافق</string>
+    <string name="cancel">إلغاء</string>
+
+    <!-- v2 -->
+    <string name="cat_video">Video</string>
+    <string name="cat_games">Games</string>
+    <string name="cat_combo">Screen time</string>
+    <string name="notif_locked">Parent fingerprint required to unlock</string>
+
+    <string name="apps_label">التطبيقات</string>
+    <string name="apps_hint">يكتشف التطبيق الفيديو والألعاب تلقائياً. أي تطبيق يشغّل فيديو وهو مفتوح يُحتسب أيضاً. يمكنك الإضافة أو الاستثناء يدوياً هنا.</string>
+    <string name="pick_video">تطبيقات الفيديو…</string>
+    <string name="pick_games">الألعاب…</string>
+    <string name="pick_allowed">تطبيقات مسموحة دائماً (لا تُحتسب)…</string>
+    <string name="pick_video_title">تُحتسب كفيديو</string>
+    <string name="pick_games_title">تُحتسب كألعاب</string>
+    <string name="pick_allowed_title">مسموحة دائماً</string>
+    <string name="loading_apps">جارٍ تحميل التطبيقات…</string>
+
+    <string name="protection_title">الحماية من التحايل</string>
+    <string name="protection_hint">على سامسونج: اضغط الزر الأول، ثم ⋮ أعلى الشاشة ← «السماح بالإعدادات المقيدة»، ثم ارجع وفعّل الثلاثة التالية.</string>
+    <string name="grant_restricted">١) السماح بالإعدادات المقيدة</string>
+    <string name="restricted_howto">اضغط ⋮ أعلى اليمين/اليسار ← السماح بالإعدادات المقيدة</string>
+    <string name="grant_a11y">٢) تفعيل خدمة الحماية (إمكانية الوصول)</string>
+    <string name="a11y_howto">التطبيقات المثبتة ← تحكم الأطفال ← تشغيل</string>
+    <string name="grant_notif">٣) كشف تشغيل الفيديو (الوصول للإشعارات)</string>
+    <string name="grant_admin">٤) منع حذف التطبيق (مسؤول الجهاز)</string>
+    <string name="a11y_status">خدمة الحماية: %1$s</string>
+    <string name="notif_status">كشف الفيديو: %1$s</string>
+    <string name="admin_status">منع الحذف: %1$s</string>
+    <string name="a11y_desc">تعرف التطبيق المفتوح لاحتساب وقت الفيديو والألعاب، وتمنع الطفل من حذف «تحكم الأطفال» أو إيقافه من الإعدادات.</string>
+    <string name="guard_blocked">هذه الصفحة محمية. افتح «تحكم الأطفال» بالرقم السري والبصمة أولاً.</string>
+    <string name="admin_explain">يمنع حذف تطبيق «تحكم الأطفال» بدون إذن ولي الأمر.</string>
+    <string name="admin_disable_warning">إلغاء هذا سيسمح بحذف تطبيق الرقابة.</string>
+    <string name="admin_already">منع الحذف مفعّل مسبقاً</string>
+    <string name="admin_failed">تعذّر فتح شاشة مسؤول الجهاز</string>
+
+    <!-- إشعار الحالة -->
+    <string name="n_running">✓ Monitoring active</string>
+    <string name="n_counting">⏱ Counting %1$s — %2$s left</string>
+    <string name="n_locked_title">🔒 Phone locked</string>
+    <string name="n_app">Open app: %1$s → %2$s</string>
+    <string name="n_cat_none">not counted</string>
+    <string name="n_screen_off">Screen off</string>
+    <string name="n_warn_a11y">Protection service is off</string>
+    <string name="n_warn_notif">Video detection is off</string>
+    <string name="n_off">off</string>
+    <string name="n_paused">⏸ المراقبة متوقفة (ضمن وقت التعطيل)</string>
+    <string name="n_paused_sub">تعمل تلقائياً خارج الفترة %1$s</string>
+    <string name="n_break">⏳ استراحة إجبارية</string>
+    <string name="break_title">⏳ استراحة إجبارية</string>
+    <string name="break_msg">استراحة — متبقٍ %1$s</string>
+    <string name="break_pin_btn">دخول للطوارئ</string>
+    <string name="break_pin_title">دخول طارئ — إنهاء الاستراحة</string>
+    <string name="break_pin_sub">أدخل الرقم السري لإنهاء الاستراحة. البصمة لا تكفي هنا.</string>
+    <string name="break_emergency_sub">افتح قفل الجهاز (رقم/نمط الجهاز) للدخول في حالة الطوارئ. البصمة لا تكفي.</string>
+    <string name="break_sub">انتهى الوقت. انتظر حتى ينتهي العدّاد.</string>
+    <string name="n_stopped">المراقبة متوقفة</string>
+    <string name="n_stopped_sub">اضغط «تشغيل» لاستئناف المراقبة</string>
+    <string name="n_stopped_resume">تعود تلقائياً الساعة %1$s — أو اضغط «تشغيل»</string>
+    <string name="n_act_stop">إيقاف (رقم سري)</string>
+    <string name="n_act_start">تشغيل</string>
+    <string name="n_act_emergency">دخول للطوارئ</string>
+
+    <!-- الشاشة الرئيسية -->
+    <string name="settings_title">الإعدادات</string>
+    <string name="open_settings">الإعدادات (رقم سري + بصمة)</string>
+    <string name="home_on">✓ المراقبة تعمل</string>
+    <string name="home_off">المراقبة متوقفة</string>
+    <string name="home_locked">🔒 الجوال مقفل الآن</string>
+    <string name="home_paused">⏸ متوقفة ضمن وقت التعطيل</string>
+    <string name="home_on_sub">اضغط «إيقاف المراقبة» ويلزم الرقم السري</string>
+    <string name="home_off_sub">اضغط «تشغيل المراقبة» للبدء</string>
+    <string name="closing">تم الحفظ — يُغلق التطبيق الآن</string>
+    <string name="already_off">المراقبة متوقفة أصلاً</string>
+    <string name="forgot_pin">نسيت الرقم السري؟</string>
+    <string name="reset_pin_title">استرجاع الرقم السري</string>
+    <string name="reset_pin_sub">افتح قفل الجهاز لإثبات أنك ولي الأمر ثم أنشئ رقماً جديداً.</string>
+    <string name="reset_no_lock">يلزم ضبط قفل للجهاز (رقم/نمط/كلمة مرور) أولاً لاستخدام هذه الميزة.</string>
+    <string name="pin_reset_done">تم تعيين رقم سري جديد</string>
+    <string name="crash_title">تقرير خطأ (صوّره وأرسله للمطوّر)</string>
+    <string name="crash_copy">نسخ</string>
+    <string name="crash_clear">مسح</string>
+    <string name="crash_copied">تم النسخ</string>
+
+    <!-- جدول التعطيل -->
+    <string name="schedule_label">تعطيل المراقبة في وقت محدد يومياً</string>
+    <string name="schedule_hint">خلال هذه الفترة لا تعمل المراقبة (مثلاً وقت الدوام نهاراً). تُستأنف تلقائياً بعدها.</string>
+    <string name="sched_from">من الساعة: %1$s</string>
+    <string name="sched_to">إلى الساعة: %1$s</string>
+
+    <!-- قيود الليل -->
+    <string name="night_label">قيود الليل (حد مشدّد ليلاً)</string>
+    <string name="night_hint">خلال هذه الفترة يصبح الحد للفيديو والألعاب قصيراً جداً (دقيقة واحدة افتراضياً).</string>
+    <string name="night_from">من الساعة: %1$s</string>
+    <string name="night_to">إلى الساعة: %1$s</string>
+    <string name="night_limit_label">الحد الليلي (بالدقائق):</string>
+
+    <!-- الاستراحة الإجبارية -->
+    <string name="break_settings_label">الاستراحة الإجبارية</string>
+    <string name="break_hint">بعد تبصيمين للمواصلة، أو تجاوز زمن الجلسة، تظهر استراحة بعدّاد تنازلي لا تُفتح إلا بالرقم السري أو بانتهاء العدّاد.</string>
+    <string name="break_threshold_label">زمن الجلسة الذي يُلزم الاستراحة (بالدقائق):</string>
+    <string name="break_minutes_label">مدة الاستراحة (بالدقائق):</string>
+
+    <!-- الإيقاف المؤقت -->
+    <string name="resume_label">العودة التلقائية بعد الإيقاف</string>
+    <string name="resume_hint">عند إيقافك المراقبة يدوياً تعود للعمل تلقائياً بعد هذه المدة، فلا تُنسى متوقفة.</string>
+    <string name="resume_minutes_label">مدة الإيقاف المؤقت (بالدقائق):</string>
+    <string name="stopped_resume">أُوقفت المراقبة — تعود تلقائياً بعد %1$d دقيقة</string>
+    <string name="home_resume_sub">تعود تلقائياً الساعة %1$s</string>
+
+    <!-- الإعداد الافتراضي -->
+    <string name="revert_label">العودة للإعداد الافتراضي تلقائياً</string>
+    <string name="revert_hint">أي تغيير تجريه على الإعدادات يُعتبر مؤقتاً، ويعود التطبيق للإعداد الافتراضي المحفوظ كل مدة تحددها.</string>
+    <string name="revert_minutes_label">كل كم دقيقة يعود للإعداد الافتراضي:</string>
+    <string name="save_as_default">حفظ الإعدادات الحالية كإعداد افتراضي</string>
+    <string name="default_saved">تم حفظ الإعداد الافتراضي</string>
+    <string name="default_status_set">يوجد إعداد افتراضي محفوظ ✓</string>
+    <string name="default_status_none">لا يوجد إعداد افتراضي محفوظ بعد</string>
+</resources>

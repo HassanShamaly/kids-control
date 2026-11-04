@@ -1,0 +1,348 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <!-- ===================== الشاشة الرئيسية (بلا رقم سري) ===================== -->
+        <LinearLayout
+            android:id="@+id/home_root"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="20dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/app_name"
+                android:textColor="@color/accent"
+                android:textSize="24sp"
+                android:textStyle="bold"
+                android:gravity="center"
+                android:paddingBottom="16dp" />
+
+            <androidx.cardview.widget.CardView style="@style/Card">
+                <LinearLayout style="@style/CardInner">
+                    <TextView
+                        android:id="@+id/tv_home_status"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textColor="@color/text"
+                        android:textSize="20sp"
+                        android:textStyle="bold"
+                        android:gravity="center"
+                        android:paddingTop="6dp"
+                        android:paddingBottom="6dp" />
+                    <TextView
+                        android:id="@+id/tv_home_sub"
+                        style="@style/Hint"
+                        android:gravity="center" />
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <Button
+                android:id="@+id/btn_home_start"
+                style="@style/Primary"
+                android:text="@string/start_monitor" />
+            <Button
+                android:id="@+id/btn_home_stop"
+                style="@style/Secondary"
+                android:text="@string/stop_monitor" />
+
+            <View style="@style/Divider" />
+
+            <Button
+                android:id="@+id/btn_open_settings"
+                style="@style/Secondary"
+                android:text="@string/open_settings" />
+        </LinearLayout>
+
+        <!-- ===================== الإعدادات (خلف رقم سري + بصمة) ===================== -->
+        <LinearLayout
+            android:id="@+id/settings_root"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone"
+            android:padding="20dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_title"
+                android:textColor="@color/accent"
+                android:textSize="22sp"
+                android:textStyle="bold"
+                android:gravity="center"
+                android:paddingBottom="16dp" />
+
+            <!-- الفيديو -->
+            <androidx.cardview.widget.CardView
+                style="@style/Card">
+                <LinearLayout style="@style/CardInner">
+                    <CheckBox
+                        android:id="@+id/cb_yt"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/limit_youtube"
+                        android:textColor="@color/text"
+                        android:textSize="17sp" />
+                    <TextView style="@style/Hint" android:text="@string/minutes_label" />
+                    <EditText
+                        android:id="@+id/et_yt"
+                        style="@style/Num"
+                        android:hint="30" />
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- الألعاب -->
+            <androidx.cardview.widget.CardView
+                style="@style/Card">
+                <LinearLayout style="@style/CardInner">
+                    <CheckBox
+                        android:id="@+id/cb_game"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/limit_games"
+                        android:textColor="@color/text"
+                        android:textSize="17sp" />
+                    <TextView style="@style/Hint" android:text="@string/minutes_label" />
+                    <EditText
+                        android:id="@+id/et_game"
+                        style="@style/Num"
+                        android:hint="30" />
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- مدة الابتعاد لإعادة التصفير -->
+            <androidx.cardview.widget.CardView
+                style="@style/Card">
+                <LinearLayout style="@style/CardInner">
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/cooldown_label"
+                        android:textColor="@color/text"
+                        android:textSize="17sp" />
+                    <TextView style="@style/Hint" android:text="@string/cooldown_hint" />
+                    <EditText
+                        android:id="@+id/et_cooldown"
+                        style="@style/Num"
+                        android:hint="10" />
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- جدول التعطيل اليومي -->
+            <androidx.cardview.widget.CardView
+                style="@style/Card">
+                <LinearLayout style="@style/CardInner">
+                    <CheckBox
+                        android:id="@+id/cb_schedule"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/schedule_label"
+                        android:textColor="@color/text"
+                        android:textSize="17sp" />
+                    <TextView style="@style/Hint" android:text="@string/schedule_hint" />
+                    <Button
+                        android:id="@+id/btn_sched_from"
+                        style="@style/Secondary"
+                        android:text="@string/sched_from" />
+                    <Button
+                        android:id="@+id/btn_sched_to"
+                        style="@style/Secondary"
+                        android:text="@string/sched_to" />
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- قيود الليل -->
+            <androidx.cardview.widget.CardView style="@style/Card">
+                <LinearLayout style="@style/CardInner">
+                    <CheckBox
+                        android:id="@+id/cb_night"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/night_label"
+                        android:textColor="@color/text"
+                        android:textSize="17sp" />
+                    <TextView style="@style/Hint" android:text="@string/night_hint" />
+                    <Button android:id="@+id/btn_night_from" style="@style/Secondary" android:text="@string/night_from" />
+                    <Button android:id="@+id/btn_night_to" style="@style/Secondary" android:text="@string/night_to" />
+                    <TextView style="@style/Hint" android:text="@string/night_limit_label" />
+                    <EditText android:id="@+id/et_night_limit" style="@style/Num" android:hint="1" />
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- الاستراحة الإجبارية -->
+            <androidx.cardview.widget.CardView style="@style/Card">
+                <LinearLayout style="@style/CardInner">
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/break_settings_label"
+                        android:textColor="@color/text"
+                        android:textSize="17sp" />
+                    <TextView style="@style/Hint" android:text="@string/break_hint" />
+                    <TextView style="@style/Hint" android:text="@string/break_threshold_label" />
+                    <EditText android:id="@+id/et_break_threshold" style="@style/Num" android:hint="20" />
+                    <TextView style="@style/Hint" android:text="@string/break_minutes_label" />
+                    <EditText android:id="@+id/et_break_minutes" style="@style/Num" android:hint="60" />
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- الإيقاف المؤقت -->
+            <androidx.cardview.widget.CardView style="@style/Card">
+                <LinearLayout style="@style/CardInner">
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/resume_label"
+                        android:textColor="@color/text"
+                        android:textSize="17sp" />
+                    <TextView style="@style/Hint" android:text="@string/resume_hint" />
+                    <EditText android:id="@+id/et_resume" style="@style/Num" android:hint="30" />
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- الإعداد الافتراضي والعودة إليه دورياً -->
+            <androidx.cardview.widget.CardView style="@style/Card">
+                <LinearLayout style="@style/CardInner">
+                    <CheckBox
+                        android:id="@+id/cb_revert"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/revert_label"
+                        android:textColor="@color/text"
+                        android:textSize="17sp" />
+                    <TextView style="@style/Hint" android:text="@string/revert_hint" />
+                    <TextView style="@style/Hint" android:text="@string/revert_minutes_label" />
+                    <EditText android:id="@+id/et_revert" style="@style/Num" android:hint="30" />
+                    <Button
+                        android:id="@+id/btn_save_default"
+                        style="@style/Secondary"
+                        android:text="@string/save_as_default" />
+                    <TextView android:id="@+id/tv_default_status" style="@style/Hint" />
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- اختيار التطبيقات -->
+            <androidx.cardview.widget.CardView
+                style="@style/Card">
+                <LinearLayout style="@style/CardInner">
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/apps_label"
+                        android:textColor="@color/text"
+                        android:textSize="17sp" />
+                    <TextView style="@style/Hint" android:text="@string/apps_hint" />
+                    <Button android:id="@+id/btn_pick_video" style="@style/Secondary" android:text="@string/pick_video" />
+                    <Button android:id="@+id/btn_pick_games" style="@style/Secondary" android:text="@string/pick_games" />
+                    <Button android:id="@+id/btn_pick_allowed" style="@style/Secondary" android:text="@string/pick_allowed" />
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <Button
+                android:id="@+id/btn_save"
+                style="@style/Primary"
+                android:text="@string/save_settings" />
+
+            <Button
+                android:id="@+id/btn_change_pin"
+                style="@style/Secondary"
+                android:text="@string/change_pin" />
+
+            <View style="@style/Divider" />
+
+            <!-- الصلاحيات -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/permissions"
+                android:textColor="@color/accent"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:paddingTop="8dp"
+                android:paddingBottom="8dp" />
+
+            <TextView
+                android:id="@+id/tv_usage_status"
+                style="@style/Status" />
+            <Button
+                android:id="@+id/btn_usage"
+                style="@style/Secondary"
+                android:text="@string/grant_usage" />
+
+            <TextView
+                android:id="@+id/tv_overlay_status"
+                style="@style/Status" />
+            <Button
+                android:id="@+id/btn_overlay"
+                style="@style/Secondary"
+                android:text="@string/grant_overlay" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/protection_title"
+                android:textColor="@color/accent"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:paddingTop="18dp"
+                android:paddingBottom="4dp" />
+            <TextView style="@style/Hint" android:text="@string/protection_hint" />
+
+            <Button
+                android:id="@+id/btn_restricted"
+                style="@style/Secondary"
+                android:text="@string/grant_restricted" />
+
+            <TextView
+                android:id="@+id/tv_a11y_status"
+                style="@style/Status" />
+            <Button
+                android:id="@+id/btn_a11y"
+                style="@style/Secondary"
+                android:text="@string/grant_a11y" />
+
+            <TextView
+                android:id="@+id/tv_notif_status"
+                style="@style/Status" />
+            <Button
+                android:id="@+id/btn_notif"
+                style="@style/Secondary"
+                android:text="@string/grant_notif" />
+
+            <TextView
+                android:id="@+id/tv_admin_status"
+                style="@style/Status" />
+            <Button
+                android:id="@+id/btn_admin"
+                style="@style/Secondary"
+                android:text="@string/grant_admin" />
+
+            <View style="@style/Divider" />
+
+            <TextView
+                android:id="@+id/tv_service_status"
+                style="@style/Status" />
+
+            <Button
+                android:id="@+id/btn_start"
+                style="@style/Primary"
+                android:text="@string/start_monitor" />
+            <Button
+                android:id="@+id/btn_stop"
+                style="@style/Secondary"
+                android:text="@string/stop_monitor" />
+
+        </LinearLayout>
+    </LinearLayout>
+</ScrollView>

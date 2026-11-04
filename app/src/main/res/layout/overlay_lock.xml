@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/lock_bg"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:padding="32dp"
+    android:clickable="true"
+    android:focusable="true">
+
+    <ImageView
+        android:layout_width="96dp"
+        android:layout_height="96dp"
+        android:src="@drawable/ic_shield"
+        android:contentDescription="@string/app_name"
+        app:tint="@color/accent"
+        xmlns:app="http://schemas.android.com/apk/res-auto" />
+
+    <TextView
+        android:id="@+id/lock_msg"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:paddingTop="24dp"
+        android:paddingBottom="8dp"
+        android:text="@string/lock_youtube"
+        android:textColor="#FFFFFF"
+        android:textSize="22sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/lock_sub"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:paddingBottom="32dp"
+        android:text="@string/lock_sub"
+        android:textColor="#CCCCCC"
+        android:textSize="16sp" />
+
+    <Button
+        android:id="@+id/btn_unlock"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="@color/accent"
+        android:paddingStart="40dp"
+        android:paddingEnd="40dp"
+        android:paddingTop="14dp"
+        android:paddingBottom="14dp"
+        android:text="@string/unlock_btn"
+        android:textColor="#FFFFFF"
+        android:textSize="18sp" />
+</LinearLayout>

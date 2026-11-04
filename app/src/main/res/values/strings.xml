@@ -125,6 +125,17 @@
     <!-- الشاشة الرئيسية -->
     <string name="settings_title">الإعدادات</string>
     <string name="open_settings">الإعدادات (رقم سري + بصمة)</string>
+    <string name="check_update">التحقق من وجود تحديث</string>
+    <string name="version_fmt">الإصدار %1$s</string>
+    <string name="upd_title">يوجد تحديث جديد</string>
+    <string name="upd_msg">تتوفّر النسخة %1$s. هل تريد التحديث الآن؟</string>
+    <string name="upd_now">تحديث الآن</string>
+    <string name="upd_later">لاحقاً</string>
+    <string name="upd_downloading">جارٍ تحميل التحديث…</string>
+    <string name="upd_up_to_date">أنت على آخر إصدار</string>
+    <string name="upd_check_failed">تعذّر التحقق من التحديث</string>
+    <string name="upd_download_failed">تعذّر تحميل التحديث</string>
+    <string name="upd_install_failed">تعذّر فتح شاشة التثبيت</string>
     <string name="home_on">✓ المراقبة تعمل</string>
     <string name="home_off">المراقبة متوقفة</string>
     <string name="home_locked">🔒 الجوال مقفل الآن</string>

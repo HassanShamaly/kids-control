@@ -64,6 +64,7 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         setupHome();
         showCrashIfAny();
+        UpdateChecker.check(this, false);   // فحص صامت للتحديث عند الفتح
         if (getIntent() != null && getIntent().getBooleanExtra("stop_request", false)) {
             getIntent().removeExtra("stop_request");
             tvHomeStatus.post(this::confirmStop);   // طلب الإيقاف من الإشعار
@@ -104,6 +105,12 @@ public class MainActivity extends AppCompatActivity {
         findViewById(R.id.btn_home_start).setOnClickListener(v -> startMonitoring()); // تشغيل بضغطة
         findViewById(R.id.btn_home_stop).setOnClickListener(v -> confirmStop());      // إيقاف برقم سري
         findViewById(R.id.btn_open_settings).setOnClickListener(v -> openSettings()); // رقم سري + بصمة
+        findViewById(R.id.btn_update).setOnClickListener(v -> UpdateChecker.check(this, true));
+        TextView ver = findViewById(R.id.tv_version);
+        try {
+            ver.setText(getString(R.string.version_fmt,
+                    getPackageManager().getPackageInfo(getPackageName(), 0).versionName));
+        } catch (Exception ignored) { }
         refreshHome();
     }
 

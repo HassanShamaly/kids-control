@@ -62,6 +62,20 @@
                 android:id="@+id/btn_open_settings"
                 style="@style/Secondary"
                 android:text="@string/open_settings" />
+
+            <Button
+                android:id="@+id/btn_update"
+                style="@style/Secondary"
+                android:text="@string/check_update" />
+
+            <TextView
+                android:id="@+id/tv_version"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:paddingTop="10dp"
+                android:textColor="@color/hint"
+                android:textSize="13sp" />
         </LinearLayout>
 
         <!-- ===================== الإعدادات (خلف رقم سري + بصمة) ===================== -->

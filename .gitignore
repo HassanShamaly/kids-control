@@ -26,3 +26,7 @@ _to_delete/
 _src_snapshot*
 _cp*.tgz
 _repo_src.tgz
+
+# نسخة احتياطية لمفتاح التوقيع (محلية فقط — لا تُرفع أبداً)
+SIGNING-BACKUP.txt
+kids-release.jks

@@ -381,11 +381,16 @@ public class MainActivity extends AppCompatActivity {
         findViewById(R.id.home_root).setVisibility(View.GONE);
         findViewById(R.id.settings_root).setVisibility(View.VISIBLE);
 
-        // زر عرض/إخفاء المتقدم
-        final CheckBox cbAdv = findViewById(R.id.cb_advanced);
-        final View advBox = findViewById(R.id.advanced_box);
-        cbAdv.setOnCheckedChangeListener((b, checked) ->
-                advBox.setVisibility(checked ? View.VISIBLE : View.GONE));
+        // الإعدادات كمجموعات: كل زر يفتح/يطوي مجموعته (كلها مطويّة افتراضياً)
+        wireGroup(R.id.hdr_limits,  R.id.box_limits);
+        wireGroup(R.id.hdr_exclude, R.id.box_exclude);
+        wireGroup(R.id.hdr_times,   R.id.box_times);
+        wireGroup(R.id.hdr_break,   R.id.box_break);
+        wireGroup(R.id.hdr_auto,    R.id.box_auto);
+        wireGroup(R.id.hdr_perms,   R.id.box_perms);
+        wireGroup(R.id.hdr_protect, R.id.box_protect);
+        wireGroup(R.id.hdr_bank,    R.id.box_bank);
+        wireGroup(R.id.hdr_run,     R.id.box_run);
 
         etYt = findViewById(R.id.et_yt);
         etGame = findViewById(R.id.et_game);
@@ -745,6 +750,21 @@ public class MainActivity extends AppCompatActivity {
 
     private String yesNo(boolean b) {
         return getString(b ? R.string.granted : R.string.not_granted);
+    }
+
+    /** يربط زر مجموعة بمحتواها: الضغط يفتح/يطوي المجموعة. تُطوى كل المجموعات مبدئياً. */
+    private void wireGroup(int headerId, int boxId) {
+        final android.widget.Button header = findViewById(headerId);
+        final View box = findViewById(boxId);
+        if (header == null || box == null) return;
+        final CharSequence base = header.getText();
+        box.setVisibility(View.GONE);
+        header.setText("▸  " + base);
+        header.setOnClickListener(v -> {
+            boolean show = box.getVisibility() != View.VISIBLE;
+            box.setVisibility(show ? View.VISIBLE : View.GONE);
+            header.setText((show ? "▾  " : "▸  ") + base);
+        });
     }
 
     /**

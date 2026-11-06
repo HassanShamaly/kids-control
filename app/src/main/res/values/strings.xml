@@ -127,6 +127,7 @@
     <string name="open_settings">الإعدادات (رقم سري + بصمة)</string>
     <string name="download_latest">تنزيل وتثبيت آخر إصدار</string>
     <string name="upd_checking">جارٍ التحقق من التحديث…</string>
+    <string name="settings_accordion_hint">اضغط أي مجموعة لفتحها أو إغلاقها.</string>
     <string name="show_advanced">عرض الإعدادات المتقدمة</string>
     <string name="sec_limits">المدد</string>
     <string name="sec_exclude">الاستثناءات</string>

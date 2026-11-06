@@ -107,14 +107,12 @@ public class AppClassifier {
         if (isGame(pkg)) return CAT_GAME;
         if (isVideoApp(pkg)) return CAT_YT;
 
-        // كشف ديناميكي: التطبيق المفتوح يشغّل فيديو/وسائط الآن
+        // كشف ديناميكي: يُحتسب فيديو فقط إذا كان هذا التطبيق نفسه يشغّل وسائط الآن
+        // (عبر جلسة وسائط فعلية). لا نحتسب تطبيقاً لمجرد وجود صوت في الجهاز،
+        // حتى لا تُحتسب تطبيقات مثل البنوك/الدفع خطأً.
         if (prefs.getSet(Prefs.K_EXC_VIDEO).contains(pkg)) return CAT_NONE;
         if (isAudioApp(pkg)) return CAT_NONE; // تطبيقات الصوت فقط (موسيقى/قرآن) لا تُحسب
-        if (playing != null) {
-            if (playing.contains(pkg)) return CAT_YT;
-        } else if (musicActive) {
-            return CAT_YT; // بلا صلاحية الإشعارات: أي صوت وسائط والتطبيق مفتوح
-        }
+        if (playing != null && playing.contains(pkg)) return CAT_YT;
         return CAT_NONE;
     }
 

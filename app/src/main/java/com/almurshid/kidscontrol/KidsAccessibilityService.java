@@ -52,6 +52,17 @@ public class KidsAccessibilityService extends AccessibilityService {
         return instance != null ? foregroundPkg : null;
     }
 
+    /**
+     * يوقف خدمة الحماية مؤقتاً (وضع البنوك): تطبيقات البنوك ترفض العمل مع خدمة
+     * إمكانية وصول مفعّلة. يعيدها ولي الأمر يدوياً من إعدادات إمكانية الوصول.
+     * حدود الوقت والقفل تستمران لأنهما يعتمدان على سجل الاستخدام والطبقة لا على هذه الخدمة.
+     */
+    public static boolean pauseForBanking() {
+        KidsAccessibilityService s = instance;
+        if (s == null) return false;
+        try { s.disableSelf(); return true; } catch (Throwable t) { return false; }
+    }
+
     /** يخرج إلى الشاشة الرئيسية (يُستخدم عند القفل). */
     public static void goHome() {
         KidsAccessibilityService s = instance;

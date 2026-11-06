@@ -487,6 +487,7 @@ public class MainActivity extends AppCompatActivity {
         });
         findViewById(R.id.btn_notif).setOnClickListener(v ->
                 startActivity(new Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS")));
+        findViewById(R.id.btn_bank_mode).setOnClickListener(v -> toggleBankMode());
         findViewById(R.id.btn_admin).setOnClickListener(v -> requestAdmin());
         findViewById(R.id.btn_restricted).setOnClickListener(v -> {
             Toast.makeText(this, R.string.restricted_howto, Toast.LENGTH_LONG).show();
@@ -743,6 +744,11 @@ public class MainActivity extends AppCompatActivity {
         tvA11y.setText(getString(R.string.a11y_status, yesNo(isA11yEnabled())));
         tvNotif.setText(getString(R.string.notif_status, yesNo(isNotifListenerEnabled())));
         tvAdmin.setText(getString(R.string.admin_status, yesNo(isAdminActive())));
+        android.widget.TextView tvBank = findViewById(R.id.tv_bank_status);
+        android.widget.Button btnBank = findViewById(R.id.btn_bank_mode);
+        boolean a11yRunning = KidsAccessibilityService.isRunning();
+        if (tvBank != null) tvBank.setText(a11yRunning ? R.string.bank_status_on : R.string.bank_status_off);
+        if (btnBank != null) btnBank.setText(a11yRunning ? R.string.bank_pause : R.string.bank_resume);
         tvStatus.setText(getString(R.string.service_status,
                 getString(prefs.enabled() ? R.string.running : R.string.off)));
         btnStart.setEnabled(true);
@@ -751,6 +757,24 @@ public class MainActivity extends AppCompatActivity {
 
     private String yesNo(boolean b) {
         return getString(b ? R.string.granted : R.string.not_granted);
+    }
+
+    /**
+     * وضع البنوك: يوقف خدمة الحماية مؤقتاً (تطبيقات البنوك ترفض العمل معها)،
+     * أو — إن كانت متوقفة — يفتح إعدادات إمكانية الوصول لإعادة تفعيلها بضغطة.
+     * حدود الوقت والقفل تبقى شغّالة في الحالتين.
+     */
+    private void toggleBankMode() {
+        if (KidsAccessibilityService.isRunning()) {
+            boolean ok = KidsAccessibilityService.pauseForBanking();
+            Toast.makeText(this, ok ? R.string.bank_paused_toast : R.string.a11y_howto,
+                    Toast.LENGTH_LONG).show();
+        } else {
+            Toast.makeText(this, R.string.bank_resume_toast, Toast.LENGTH_LONG).show();
+            startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));
+        }
+        // disableSelf غير فوري؛ حدّث الحالة بعد لحظة
+        getWindow().getDecorView().postDelayed(this::refreshPermissionStatus, 900L);
     }
 
     private boolean isA11yEnabled() {

@@ -10,8 +10,8 @@ android {
         applicationId "com.almurshid.kidscontrol"
         minSdk 26
         targetSdk 34
-        versionCode 25
-        versionName "4.3"
+        versionCode 26
+        versionName "4.4"
     }
 
     // توقيع ثابت: يأخذ المفتاح من ملف يحدده البناء التلقائي عبر متغيرات بيئة.

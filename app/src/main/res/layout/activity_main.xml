@@ -241,6 +241,16 @@
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 
+            <!-- ===== وضع البنوك ===== -->
+            <TextView style="@style/Section" android:text="@string/sec_bank" />
+            <androidx.cardview.widget.CardView style="@style/Card">
+                <LinearLayout style="@style/CardInner">
+                    <TextView style="@style/Hint" android:text="@string/bank_hint" />
+                    <TextView android:id="@+id/tv_bank_status" style="@style/Status" />
+                    <Button android:id="@+id/btn_bank_mode" style="@style/Secondary" android:text="@string/bank_pause" />
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
             <!-- ===== التشغيل ===== -->
             <TextView style="@style/Section" android:text="@string/sec_run" />
             <androidx.cardview.widget.CardView style="@style/Card">

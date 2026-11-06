@@ -1,9 +1,11 @@
 package com.almurshid.kidscontrol;
 
 import android.app.Activity;
+import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageInfo;
+import android.content.pm.PackageInstaller;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Handler;
@@ -103,18 +105,48 @@ public class UpdateChecker {
     }
 
     private static void installApk(Activity act, File apk) {
-        try {
-            // افتح نافذة تثبيت (5 دقائق) حتى لا تحرس خدمة الحماية شاشة التحديث
-            new Prefs(act).setInstallUntil(System.currentTimeMillis() + 5 * 60_000L);
-            Uri uri = FileProvider.getUriForFile(act,
-                    act.getPackageName() + ".fileprovider", apk);
-            Intent i = new Intent(Intent.ACTION_VIEW);
-            i.setDataAndType(uri, "application/vnd.android.package-archive");
-            i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
-            act.startActivity(i);
-        } catch (Throwable t) {
-            Toast.makeText(act, R.string.upd_install_failed, Toast.LENGTH_LONG).show();
+        // افتح نافذة تثبيت (5 دقائق) حتى لا تحرس خدمة الحماية شاشة التحديث
+        new Prefs(act).setInstallUntil(System.currentTimeMillis() + 5 * 60_000L);
+
+        // 1) تأكد من إذن «التثبيت من هذا المصدر»؛ إن لم يكن ممنوحاً افتح شاشته
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+                && !act.getPackageManager().canRequestPackageInstalls()) {
+            Toast.makeText(act, R.string.upd_need_install_perm, Toast.LENGTH_LONG).show();
+            try {
+                act.startActivity(new Intent(
+                        android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                        Uri.parse("package:" + act.getPackageName())));
+            } catch (Throwable ignored) { }
+            return;
         }
+
+        // 2) ثبّت عبر PackageInstaller حتى نكتشف إن مُنع التثبيت (حماية جوجل/الحظر التلقائي)
+        new Thread(() -> {
+            try {
+                PackageInstaller pi = act.getPackageManager().getPackageInstaller();
+                PackageInstaller.SessionParams params = new PackageInstaller.SessionParams(
+                        PackageInstaller.SessionParams.MODE_FULL_INSTALL);
+                int sid = pi.createSession(params);
+                PackageInstaller.Session session = pi.openSession(sid);
+                try (InputStream in = new java.io.FileInputStream(apk);
+                     java.io.OutputStream out = session.openWrite("kids", 0, apk.length())) {
+                    byte[] buf = new byte[65536];
+                    int n;
+                    while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+                    session.fsync(out);
+                }
+                Intent si = new Intent(act, UpdateInstallReceiver.class)
+                        .setAction(UpdateInstallReceiver.ACTION_STATUS);
+                int flags = PendingIntent.FLAG_UPDATE_CURRENT
+                        | (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ? PendingIntent.FLAG_MUTABLE : 0);
+                PendingIntent pIntent = PendingIntent.getBroadcast(act, sid, si, flags);
+                session.commit(pIntent.getIntentSender());
+                session.close();
+            } catch (Throwable t) {
+                new Handler(Looper.getMainLooper()).post(() ->
+                        Toast.makeText(act, R.string.upd_install_failed, Toast.LENGTH_LONG).show());
+            }
+        }).start();
     }
 
     // ===== أدوات =====

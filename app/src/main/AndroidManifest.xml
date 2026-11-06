@@ -43,6 +43,11 @@
             </intent-filter>
         </activity>
 
+        <!-- مستقبل نتيجة تثبيت التحديث -->
+        <receiver
+            android:name=".UpdateInstallReceiver"
+            android:exported="false" />
+
         <!-- مزوّد ملفات لتثبيت تحديث الـAPK -->
         <provider
             android:name="androidx.core.content.FileProvider"

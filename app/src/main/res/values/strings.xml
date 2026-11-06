@@ -152,6 +152,11 @@
     <string name="upd_check_failed">تعذّر التحقق من التحديث</string>
     <string name="upd_download_failed">تعذّر تحميل التحديث</string>
     <string name="upd_install_failed">تعذّر فتح شاشة التثبيت</string>
+    <string name="upd_installed">تم تثبيت التحديث</string>
+    <string name="upd_need_install_perm">فعّل «السماح بتثبيت التطبيقات» لهذا التطبيق ثم أعد المحاولة</string>
+    <string name="upd_channel">تحديث التطبيق</string>
+    <string name="upd_blocked_title">تعذّر تثبيت التحديث</string>
+    <string name="upd_blocked_text">قد يكون السبب «حماية Play» أو «الحظر التلقائي». اضغط هنا لفتح إعدادات الأمان وأوقفهما مؤقتاً، ثم أعد التحديث من التطبيق.</string>
     <string name="home_on">✓ المراقبة تعمل</string>
     <string name="home_off">المراقبة متوقفة</string>
     <string name="home_locked">🔒 الجوال مقفل الآن</string>

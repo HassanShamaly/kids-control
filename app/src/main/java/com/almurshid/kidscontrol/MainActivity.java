@@ -48,8 +48,9 @@ public class MainActivity extends AppCompatActivity {
     private Prefs prefs;
     private boolean authed = false;      // تم فتح قسم الإعدادات
 
-    private EditText etYt, etGame, etCooldown, etNightLimit, etBreakThreshold, etBreakMinutes, etResume, etRevert;
-    private CheckBox cbYt, cbGame, cbSchedule, cbNight, cbRevert;
+    private EditText etYt, etGame, etCooldown, etNightLimit, etBreakThreshold, etBreakMinutes, etResume, etRevert, etRelaxLimit;
+    private CheckBox cbYt, cbGame, cbSchedule, cbNight, cbRevert, cbRelax, cbExcludeFb, cbExcludeIg;
+    private java.util.Set<String> relaxDays;
     private TextView tvDefaultStatus;
     private Button btnSchedFrom, btnSchedTo, btnNightFrom, btnNightTo;
     private TextView tvUsage, tvOverlay, tvA11y, tvNotif, tvAdmin, tvStatus;
@@ -104,6 +105,7 @@ public class MainActivity extends AppCompatActivity {
         tvHomeSub = findViewById(R.id.tv_home_sub);
         findViewById(R.id.btn_home_start).setOnClickListener(v -> startMonitoring()); // تشغيل بضغطة
         findViewById(R.id.btn_home_stop).setOnClickListener(v -> confirmStop());      // إيقاف برقم سري
+        findViewById(R.id.btn_home_close).setOnClickListener(v -> confirmFullClose()); // إغلاق تام برقم سري
         findViewById(R.id.btn_open_settings).setOnClickListener(v -> openSettings()); // رقم سري + بصمة
         findViewById(R.id.btn_update).setOnClickListener(v -> UpdateChecker.check(this, true));
         TextView ver = findViewById(R.id.tv_version);
@@ -163,6 +165,32 @@ public class MainActivity extends AppCompatActivity {
                 .setNeutralButton(R.string.forgot_pin, (d, w) -> startResetPin())
                 .setNegativeButton(R.string.cancel, null)
                 .show();
+    }
+
+    /** إغلاق التطبيق تماماً — يتطلب الرقم السري. */
+    private void confirmFullClose() {
+        if (!prefs.hasPin()) { fullClose(); return; }
+        final EditText in = pinInput();
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.close_app)
+                .setMessage(R.string.close_confirm)
+                .setView(in)
+                .setPositiveButton(R.string.ok, (d, w) -> {
+                    if (prefs.checkPin(in.getText().toString().trim())) fullClose();
+                    else Toast.makeText(this, R.string.pin_wrong, Toast.LENGTH_LONG).show();
+                })
+                .setNegativeButton(R.string.cancel, null)
+                .show();
+    }
+
+    private void fullClose() {
+        prefs.setEnabled(false);
+        prefs.setResumeAt(0);
+        prefs.setLocked(false, 0);
+        Intent svc = new Intent(this, MonitorService.class).setAction(MonitorService.ACTION_FULL_STOP);
+        startService(svc);
+        Toast.makeText(this, R.string.closed_fully, Toast.LENGTH_SHORT).show();
+        refreshHome();
     }
 
     /** فتح الإعدادات: رقم سري ثم بصمة. */
@@ -386,6 +414,19 @@ public class MainActivity extends AppCompatActivity {
         etBreakMinutes.setText(String.valueOf(prefs.breakMinutes()));
         etResume = findViewById(R.id.et_resume);
         etResume.setText(String.valueOf(prefs.resumeMinutes()));
+
+        // أيام مفتوحة
+        cbRelax = findViewById(R.id.cb_relax);
+        etRelaxLimit = findViewById(R.id.et_relax_limit);
+        cbRelax.setChecked(prefs.relaxOn());
+        etRelaxLimit.setText(String.valueOf(prefs.relaxLimit()));
+        relaxDays = prefs.relaxDays();
+        findViewById(R.id.btn_relax_days).setOnClickListener(v -> pickRelaxDays());
+        // استثناء فيسبوك/إنستاجرام
+        cbExcludeFb = findViewById(R.id.cb_exclude_fb);
+        cbExcludeIg = findViewById(R.id.cb_exclude_ig);
+        cbExcludeFb.setChecked(prefs.excludeFb());
+        cbExcludeIg.setChecked(prefs.excludeIg());
         cbRevert = findViewById(R.id.cb_revert);
         etRevert = findViewById(R.id.et_revert);
         tvDefaultStatus = findViewById(R.id.tv_default_status);
@@ -458,6 +499,29 @@ public class MainActivity extends AppCompatActivity {
         prefs.setRevertOn(cbRevert.isChecked());
         prefs.setRevertMinutes(Math.max(1, parseInt(etRevert.getText().toString(), 30)));
         if (prefs.revertOn()) prefs.setRevertAt(0L); // يُعاد ضبط المؤقّت في الخدمة
+        prefs.setRelaxOn(cbRelax.isChecked());
+        prefs.setRelaxLimit(Math.max(1, parseInt(etRelaxLimit.getText().toString(), 60)));
+        if (relaxDays != null) prefs.setRelaxDays(relaxDays);
+        prefs.setExcludeFb(cbExcludeFb.isChecked());
+        prefs.setExcludeIg(cbExcludeIg.isChecked());
+    }
+
+    // اختيار الأيام المفتوحة (الأحد=1 .. السبت=7)
+    private void pickRelaxDays() {
+        final String[] names = {"الأحد","الاثنين","الثلاثاء","الأربعاء","الخميس","الجمعة","السبت"};
+        final boolean[] checked = new boolean[7];
+        for (int i = 0; i < 7; i++) checked[i] = relaxDays.contains(String.valueOf(i + 1));
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.relax_days_title)
+                .setMultiChoiceItems(names, checked, (d, which, isChecked) -> checked[which] = isChecked)
+                .setPositiveButton(R.string.save, (d, w) -> {
+                    java.util.Set<String> s = new java.util.HashSet<>();
+                    for (int i = 0; i < 7; i++) if (checked[i]) s.add(String.valueOf(i + 1));
+                    relaxDays = s;
+                    if (!cbRelax.isChecked()) cbRelax.setChecked(true);
+                })
+                .setNegativeButton(R.string.cancel, null)
+                .show();
     }
 
     private void save() {

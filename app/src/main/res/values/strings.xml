@@ -126,6 +126,22 @@
     <string name="settings_title">الإعدادات</string>
     <string name="open_settings">الإعدادات (رقم سري + بصمة)</string>
     <string name="check_update">التحقق من وجود تحديث</string>
+    <string name="close_app">إغلاق التطبيق تماماً (رقم سري)</string>
+    <string name="close_confirm">سيتوقف التطبيق تماماً حتى تشغّله يدوياً. متابعة؟</string>
+    <string name="closed_fully">تم إغلاق التطبيق</string>
+
+    <!-- أيام مفتوحة -->
+    <string name="relax_label">أيام مفتوحة (حد أوسع)</string>
+    <string name="relax_hint">في الأيام المختارة يصبح الحد المشترك أوسع (ساعة افتراضياً يوم الجمعة). قيود الليل تبقى سارية.</string>
+    <string name="relax_days_btn">اختر الأيام</string>
+    <string name="relax_days_title">الأيام المفتوحة</string>
+    <string name="relax_limit_label">الحد في الأيام المفتوحة (بالدقائق):</string>
+
+    <!-- استثناء فيسبوك/إنستاجرام -->
+    <string name="exclude_label">استثناء تطبيقات</string>
+    <string name="exclude_hint">عند التفعيل لا يُحتسب التطبيق ولا يُقفل (مفيد لجوال مشترك).</string>
+    <string name="exclude_fb">استثناء فيسبوك</string>
+    <string name="exclude_ig">استثناء إنستاجرام</string>
     <string name="version_fmt">الإصدار %1$s</string>
     <string name="upd_title">يوجد تحديث جديد</string>
     <string name="upd_msg">تتوفّر النسخة %1$s. هل تريد التحديث الآن؟</string>

@@ -50,6 +50,7 @@ public class MonitorService extends Service {
     public static final String ACTION_UNLOCK_OK = "com.almurshid.kidscontrol.UNLOCK_OK";
     public static final String ACTION_STOP      = "com.almurshid.kidscontrol.STOP";   // إيقاف المراقبة (تبقى الخدمة)
     public static final String ACTION_START     = "com.almurshid.kidscontrol.START";  // تشغيل المراقبة
+    public static final String ACTION_FULL_STOP = "com.almurshid.kidscontrol.FULL_STOP"; // إغلاق تام
     public static final String ACTION_SUPPRESS_OVERLAY = "com.almurshid.kidscontrol.SUPPRESS_OVERLAY"; // أخفِ الطبقة مؤقتاً لإدخال الرقم
     public static final String ACTION_RESHOW_OVERLAY   = "com.almurshid.kidscontrol.RESHOW_OVERLAY";
     public static final String ACTION_EMERGENCY        = "com.almurshid.kidscontrol.EMERGENCY";  // مدخل الطوارئ من الإشعار
@@ -176,6 +177,19 @@ public class MonitorService extends Service {
             prefs.setEnabled(false);
             if (bgHandler != null) bgHandler.post(() -> { onUnlocked(); showStoppedNotification(); });
             return START_STICKY;
+        }
+        if (ACTION_FULL_STOP.equals(action)) {
+            // إغلاق تام: توقف المراقبة ويُزال الإشعار وتُغلق الخدمة بالكامل
+            prefs.setEnabled(false);
+            prefs.setResumeAt(0);
+            prefs.setLocked(false, 0);
+            if (bgHandler != null) bgHandler.post(() -> {
+                locked = false; breakUntil = 0L; overlaySuppressUntil = 0L;
+                postRemoveOverlay();
+            });
+            stopForeground(true);
+            stopSelf();
+            return START_NOT_STICKY;
         }
         if (ACTION_SUPPRESS_OVERLAY.equals(action)) {
             if (bgHandler != null) bgHandler.post(() -> {

@@ -55,6 +55,10 @@
                 android:id="@+id/btn_home_stop"
                 style="@style/Secondary"
                 android:text="@string/stop_monitor" />
+            <Button
+                android:id="@+id/btn_home_close"
+                style="@style/Secondary"
+                android:text="@string/close_app" />
 
             <View style="@style/Divider" />
 
@@ -173,6 +177,50 @@
                         android:id="@+id/btn_sched_to"
                         style="@style/Secondary"
                         android:text="@string/sched_to" />
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- أيام مفتوحة (حد أوسع) -->
+            <androidx.cardview.widget.CardView style="@style/Card">
+                <LinearLayout style="@style/CardInner">
+                    <CheckBox
+                        android:id="@+id/cb_relax"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/relax_label"
+                        android:textColor="@color/text"
+                        android:textSize="17sp" />
+                    <TextView style="@style/Hint" android:text="@string/relax_hint" />
+                    <Button android:id="@+id/btn_relax_days" style="@style/Secondary" android:text="@string/relax_days_btn" />
+                    <TextView style="@style/Hint" android:text="@string/relax_limit_label" />
+                    <EditText android:id="@+id/et_relax_limit" style="@style/Num" android:hint="60" />
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- استثناء فيسبوك/إنستاجرام -->
+            <androidx.cardview.widget.CardView style="@style/Card">
+                <LinearLayout style="@style/CardInner">
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/exclude_label"
+                        android:textColor="@color/text"
+                        android:textSize="17sp" />
+                    <TextView style="@style/Hint" android:text="@string/exclude_hint" />
+                    <CheckBox
+                        android:id="@+id/cb_exclude_fb"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/exclude_fb"
+                        android:textColor="@color/text"
+                        android:textSize="16sp" />
+                    <CheckBox
+                        android:id="@+id/cb_exclude_ig"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/exclude_ig"
+                        android:textColor="@color/text"
+                        android:textSize="16sp" />
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 

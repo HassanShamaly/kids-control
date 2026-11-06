@@ -30,6 +30,15 @@ public class Prefs {
     public static final String K_SCHED_FROM = "sched_from_min"; // دقائق من منتصف الليل
     public static final String K_SCHED_TO   = "sched_to_min";
 
+    // أيام مفتوحة (حد أوسع): مثل الجمعة
+    public static final String K_RELAX_ON    = "relax_on";
+    public static final String K_RELAX_DAYS  = "relax_days";   // أرقام أيام Calendar (الأحد=1 .. السبت=7)
+    public static final String K_RELAX_LIMIT = "relax_limit_min";
+
+    // استثناء سريع لفيسبوك/إنستاجرام
+    public static final String K_EXCLUDE_FB = "exclude_fb";
+    public static final String K_EXCLUDE_IG = "exclude_ig";
+
     // قيود الليل: خلال الفترة يصبح الحد = دقيقة واحدة (أو ما تختاره)
     public static final String K_NIGHT_ON    = "night_on";
     public static final String K_NIGHT_FROM  = "night_from_min";
@@ -166,11 +175,45 @@ public class Prefs {
         return m >= from || m < to;
     }
 
-    /** الحد الفعّال (بالدقائق) لفئة معيّنة، مع مراعاة قيود الليل. */
+    // ===== أيام مفتوحة (حد أوسع) =====
+    public boolean relaxOn()   { return sp.getBoolean(K_RELAX_ON, true); }
+    public int relaxLimit()    { return sp.getInt(K_RELAX_LIMIT, 60); }   // ساعة افتراضياً
+    public void setRelaxOn(boolean v) { sp.edit().putBoolean(K_RELAX_ON, v).apply(); }
+    public void setRelaxLimit(int v)  { sp.edit().putInt(K_RELAX_LIMIT, Math.max(1, v)).apply(); }
+    public java.util.Set<String> relaxDays() {
+        java.util.Set<String> def = new java.util.HashSet<>();
+        def.add("6"); // الجمعة (الأحد=1 .. الجمعة=6 .. السبت=7)
+        return new java.util.HashSet<>(sp.getStringSet(K_RELAX_DAYS, def));
+    }
+    public void setRelaxDays(java.util.Set<String> v) {
+        sp.edit().putStringSet(K_RELAX_DAYS, new java.util.HashSet<>(v)).apply();
+    }
+    public boolean isRelaxedToday() {
+        if (!relaxOn()) return false;
+        int dow = java.util.Calendar.getInstance().get(java.util.Calendar.DAY_OF_WEEK);
+        return relaxDays().contains(String.valueOf(dow));
+    }
+
+    /** الحد الفعّال (بالدقائق): الليل (أشد) ثم اليوم المفتوح (أوسع) ثم العادي. */
     public int effectiveLimit(boolean video) {
-        int base = video ? ytLimit() : gameLimit();
         if (inNightWindow()) return Math.max(1, nightLimit());
-        return base;
+        if (isRelaxedToday()) return Math.max(1, relaxLimit());
+        return video ? ytLimit() : gameLimit();
+    }
+
+    // ===== استثناء سريع لفيسبوك/إنستاجرام =====
+    public static final String[] FB_PKGS = { "com.facebook.katana", "com.facebook.lite" };
+    public static final String[] IG_PKGS = { "com.instagram.android" };
+    public boolean excludeFb() { return sp.getBoolean(K_EXCLUDE_FB, false); }
+    public boolean excludeIg() { return sp.getBoolean(K_EXCLUDE_IG, false); }
+    public void setExcludeFb(boolean v) { applyExclusion(K_EXCLUDE_FB, v, FB_PKGS); }
+    public void setExcludeIg(boolean v) { applyExclusion(K_EXCLUDE_IG, v, IG_PKGS); }
+    private void applyExclusion(String key, boolean on, String[] pkgs) {
+        java.util.Set<String> allowed = getSet(K_ALLOWED);
+        if (on) { for (String p : pkgs) allowed.add(p); }
+        else    { for (String p : pkgs) allowed.remove(p); }
+        putSet(K_ALLOWED, allowed);
+        sp.edit().putBoolean(key, on).apply();
     }
 
     // ===== الاستراحة الإجبارية =====

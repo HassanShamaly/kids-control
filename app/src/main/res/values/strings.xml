@@ -127,16 +127,6 @@
     <string name="open_settings">الإعدادات (رقم سري + بصمة)</string>
     <string name="download_latest">تنزيل وتثبيت آخر إصدار</string>
     <string name="upd_checking">جارٍ التحقق من التحديث…</string>
-    <string name="upd_title">يوجد تحديث جديد</string>
-    <string name="upd_msg">تتوفّر النسخة %1$s. هل تريد التحديث الآن؟</string>
-    <string name="upd_now">تحديث الآن</string>
-    <string name="upd_later">لاحقاً</string>
-    <string name="upd_downloading">جارٍ تحميل التحديث…</string>
-    <string name="upd_up_to_date">أنت على آخر إصدار</string>
-    <string name="upd_check_failed">تعذّر التحقق من التحديث (تأكد من الإنترنت)</string>
-    <string name="upd_download_failed">تعذّر تحميل التحديث</string>
-    <string name="upd_install_failed">تعذّر فتح شاشة التثبيت</string>
-    <string name="upd_need_install_perm">فعّل «السماح بتثبيت التطبيقات» لهذا التطبيق ثم أعد المحاولة</string>
     <string name="show_advanced">عرض الإعدادات المتقدمة</string>
     <string name="sec_limits">المدد</string>
     <string name="sec_exclude">الاستثناءات</string>

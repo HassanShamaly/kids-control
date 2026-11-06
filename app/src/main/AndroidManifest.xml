@@ -19,10 +19,6 @@
     <!-- معرفة فئة التطبيقات (ألعاب) وقراءة اسم التطبيق المفتوح -->
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
         tools:ignore="QueryAllPackagesPermission" />
-    <!-- التحديث التلقائي من الإنترنت -->
-    <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
-
     <application
         android:name=".KidsApp"
         android:allowBackup="true"
@@ -43,21 +39,6 @@
             </intent-filter>
         </activity>
 
-        <!-- مستقبل نتيجة تثبيت التحديث -->
-        <receiver
-            android:name=".UpdateInstallReceiver"
-            android:exported="false" />
-
-        <!-- مزوّد ملفات لتثبيت تحديث الـAPK -->
-        <provider
-            android:name="androidx.core.content.FileProvider"
-            android:authorities="${applicationId}.fileprovider"
-            android:exported="false"
-            android:grantUriPermissions="true">
-            <meta-data
-                android:name="android.support.FILE_PROVIDER_PATHS"
-                android:resource="@xml/file_paths" />
-        </provider>
 
         <!-- شاشة فتح القفل بالبصمة -->
         <activity

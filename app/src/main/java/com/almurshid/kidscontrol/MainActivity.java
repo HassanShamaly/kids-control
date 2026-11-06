@@ -65,7 +65,6 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         setupHome();
         showCrashIfAny();
-        UpdateChecker.check(this, false);   // فحص صامت للتحديث عند الفتح
         if (getIntent() != null && getIntent().getBooleanExtra("stop_request", false)) {
             getIntent().removeExtra("stop_request");
             tvHomeStatus.post(this::confirmStop);   // طلب الإيقاف من الإشعار
@@ -107,13 +106,25 @@ public class MainActivity extends AppCompatActivity {
         findViewById(R.id.btn_home_stop).setOnClickListener(v -> confirmStop());      // إيقاف برقم سري
         findViewById(R.id.btn_home_close).setOnClickListener(v -> confirmFullClose()); // إغلاق تام برقم سري
         findViewById(R.id.btn_open_settings).setOnClickListener(v -> openSettings()); // رقم سري + بصمة
-        findViewById(R.id.btn_update).setOnClickListener(v -> UpdateChecker.check(this, true));
+        findViewById(R.id.btn_download_latest).setOnClickListener(v -> openReleases());
         TextView ver = findViewById(R.id.tv_version);
         try {
             ver.setText(getString(R.string.version_fmt,
                     getPackageManager().getPackageInfo(getPackageName(), 0).versionName));
         } catch (Exception ignored) { }
         refreshHome();
+    }
+
+    private static final String RELEASES_URL =
+            "https://github.com/HassanShamaly/kids-control/releases/latest";
+
+    /** يفتح صفحة الإصدارات في المتصفح لتنزيل آخر نسخة يدوياً. */
+    private void openReleases() {
+        try {
+            startActivity(new Intent(Intent.ACTION_VIEW, android.net.Uri.parse(RELEASES_URL)));
+        } catch (Throwable t) {
+            Toast.makeText(this, RELEASES_URL, Toast.LENGTH_LONG).show();
+        }
     }
 
     private void refreshHome() {
@@ -366,10 +377,27 @@ public class MainActivity extends AppCompatActivity {
 
     // ===== الإعدادات بعد التحقق =====
     private void reveal() {
+        try {
+            revealInner();
+        } catch (Throwable t) {
+            // لا ننهار: نعود للرئيسية ونعرض رسالة بدل الإغلاق المفاجئ
+            closeSettingsSection();
+            Toast.makeText(this, "تعذّر فتح الإعدادات: " + t.getClass().getSimpleName(),
+                    Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void revealInner() {
         authed = true;
         prefs.setParentUntil(System.currentTimeMillis() + PARENT_MODE_MS);
         findViewById(R.id.home_root).setVisibility(View.GONE);
         findViewById(R.id.settings_root).setVisibility(View.VISIBLE);
+
+        // زر عرض/إخفاء المتقدم
+        final CheckBox cbAdv = findViewById(R.id.cb_advanced);
+        final View advBox = findViewById(R.id.advanced_box);
+        cbAdv.setOnCheckedChangeListener((b, checked) ->
+                advBox.setVisibility(checked ? View.VISIBLE : View.GONE));
 
         etYt = findViewById(R.id.et_yt);
         etGame = findViewById(R.id.et_game);

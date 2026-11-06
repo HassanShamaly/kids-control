@@ -125,7 +125,14 @@
     <!-- الشاشة الرئيسية -->
     <string name="settings_title">الإعدادات</string>
     <string name="open_settings">الإعدادات (رقم سري + بصمة)</string>
-    <string name="check_update">التحقق من وجود تحديث</string>
+    <string name="download_latest">تنزيل آخر إصدار (من GitHub)</string>
+    <string name="show_advanced">عرض الإعدادات المتقدمة</string>
+    <string name="sec_limits">المدد</string>
+    <string name="sec_exclude">الاستثناءات</string>
+    <string name="sec_times">الأوقات</string>
+    <string name="sec_break">الاستراحة الإجبارية</string>
+    <string name="sec_auto">الإيقاف المؤقت والافتراضي</string>
+    <string name="sec_run">التشغيل</string>
     <string name="close_app">إغلاق التطبيق تماماً (رقم سري)</string>
     <string name="close_confirm">سيتوقف التطبيق تماماً حتى تشغّله يدوياً. متابعة؟</string>
     <string name="closed_fully">تم إغلاق التطبيق</string>

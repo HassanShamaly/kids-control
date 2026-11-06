@@ -106,25 +106,13 @@ public class MainActivity extends AppCompatActivity {
         findViewById(R.id.btn_home_stop).setOnClickListener(v -> confirmStop());      // إيقاف برقم سري
         findViewById(R.id.btn_home_close).setOnClickListener(v -> confirmFullClose()); // إغلاق تام برقم سري
         findViewById(R.id.btn_open_settings).setOnClickListener(v -> openSettings()); // رقم سري + بصمة
-        findViewById(R.id.btn_download_latest).setOnClickListener(v -> openReleases());
+        findViewById(R.id.btn_download_latest).setOnClickListener(v -> UpdateChecker.check(this, true));
         TextView ver = findViewById(R.id.tv_version);
         try {
             ver.setText(getString(R.string.version_fmt,
                     getPackageManager().getPackageInfo(getPackageName(), 0).versionName));
         } catch (Exception ignored) { }
         refreshHome();
-    }
-
-    private static final String RELEASES_URL =
-            "https://github.com/HassanShamaly/kids-control/releases/latest";
-
-    /** يفتح صفحة الإصدارات في المتصفح لتنزيل آخر نسخة يدوياً. */
-    private void openReleases() {
-        try {
-            startActivity(new Intent(Intent.ACTION_VIEW, android.net.Uri.parse(RELEASES_URL)));
-        } catch (Throwable t) {
-            Toast.makeText(this, RELEASES_URL, Toast.LENGTH_LONG).show();
-        }
     }
 
     private void refreshHome() {

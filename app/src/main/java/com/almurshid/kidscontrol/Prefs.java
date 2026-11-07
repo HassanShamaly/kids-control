@@ -298,7 +298,9 @@ public class Prefs {
     public void setFamilyCode(String v) {
         sp.edit().putString(K_FAMILY, v == null ? "" : v.trim()).apply();
     }
-    public String syncUrl()      { return sp.getString(K_SYNCURL, ""); }
+    /** رابط قاعدة Firebase الافتراضي (مشروع العائلة) — يمكن تغييره من الإعدادات. */
+    public static final String DEFAULT_SYNC_URL = "https://sohba-52557-default-rtdb.firebaseio.com";
+    public String syncUrl()      { return sp.getString(K_SYNCURL, DEFAULT_SYNC_URL); }
     public void setSyncUrl(String v) {
         String s = v == null ? "" : v.trim();
         if (s.endsWith("/")) s = s.substring(0, s.length() - 1);

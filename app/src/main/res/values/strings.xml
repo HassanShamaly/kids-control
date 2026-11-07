@@ -142,6 +142,7 @@
     <string name="sync_published">تم نشر الإعدادات إلى الأجهزة ✓</string>
     <string name="sync_pulled">تمت المزامنة من جهاز ولي الأمر ✓</string>
     <string name="sync_failed">تعذّرت العملية — تأكد من الإنترنت والرابط والرمز</string>
+    <string name="sync_empty">لا توجد إعدادات منشورة بعد. انشر من جهاز ولي الأمر أولاً (زر «نشر الإعدادات إلى الأجهزة»).</string>
     <string name="child_locked_notice">هذا الجهاز يُدار عن بُعد من جهاز ولي الأمر. تُضبط الحدود من جواله، ولا يمكن تعديلها هنا.</string>
     <string name="show_advanced">عرض الإعدادات المتقدمة</string>
     <string name="sec_limits">المدد</string>

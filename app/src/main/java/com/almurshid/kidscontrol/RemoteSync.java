@@ -115,13 +115,15 @@ public class RemoteSync {
         new Thread(() -> {
             HttpURLConnection con = null;
             String body = null;
+            boolean httpOk = false;
             try {
                 con = (HttpURLConnection) new URL(url).openConnection();
                 con.setConnectTimeout(15000);
                 con.setReadTimeout(20000);
                 con.setRequestProperty("Accept", "application/json");
                 int code = con.getResponseCode();
-                if (code >= 200 && code < 300) {
+                httpOk = code >= 200 && code < 300;
+                if (httpOk) {
                     StringBuilder sb = new StringBuilder();
                     try (InputStream in = con.getInputStream();
                          BufferedReader r = new BufferedReader(new InputStreamReader(in, "UTF-8"))) {
@@ -135,8 +137,10 @@ public class RemoteSync {
                 if (con != null) try { con.disconnect(); } catch (Throwable ignored) { }
             }
             final String fbody = body;
+            final boolean fhttpOk = httpOk;
+            boolean hasData = fbody != null && fbody.trim().length() > 2 && !"null".equals(fbody.trim());
             boolean applied = false;
-            if (fbody != null && fbody.length() > 2 && !"null".equals(fbody)) {
+            if (hasData) {
                 try {
                     p.applyConfig(new org.json.JSONObject(fbody));
                     p.setLastPull(System.currentTimeMillis());
@@ -144,8 +148,11 @@ public class RemoteSync {
                 } catch (Throwable ignored) { }
             }
             final boolean fapplied = applied;
+            final boolean fempty = fhttpOk && !hasData; // اتصل بنجاح لكن لا توجد إعدادات منشورة
             if (showResult) ui.post(() -> Toast.makeText(c,
-                    fapplied ? R.string.sync_pulled : R.string.sync_failed,
+                    fapplied ? R.string.sync_pulled
+                             : fempty ? R.string.sync_empty
+                                      : R.string.sync_failed,
                     Toast.LENGTH_LONG).show());
         }).start();
     }

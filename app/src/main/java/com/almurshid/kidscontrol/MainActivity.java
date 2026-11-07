@@ -784,8 +784,9 @@ public class MainActivity extends AppCompatActivity {
 
         findViewById(R.id.btn_save_remote).setOnClickListener(v -> {
             saveRemote(etUrl, etFam);
-            Toast.makeText(this, R.string.save_settings, Toast.LENGTH_SHORT).show();
             applyRoleLock();
+            if (prefs.isParent()) RemoteSync.publishWithResult(this); // انشر الحدود الحالية فوراً
+            else Toast.makeText(this, R.string.save_settings, Toast.LENGTH_SHORT).show();
         });
 
         findViewById(R.id.btn_publish).setOnClickListener(v -> {

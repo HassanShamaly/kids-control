@@ -65,6 +65,7 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         setupHome();
         showCrashIfAny();
+        if (prefs.isChild()) RemoteSync.pull(this, false); // جهاز الطفل: اسحب أحدث إعدادات عند الفتح
         if (getIntent() != null && getIntent().getBooleanExtra("stop_request", false)) {
             getIntent().removeExtra("stop_request");
             tvHomeStatus.post(this::confirmStop);   // طلب الإيقاف من الإشعار
@@ -391,6 +392,8 @@ public class MainActivity extends AppCompatActivity {
         wireGroup(R.id.hdr_protect, R.id.box_protect);
         wireGroup(R.id.hdr_bank,    R.id.box_bank);
         wireGroup(R.id.hdr_run,     R.id.box_run);
+        wireGroup(R.id.hdr_remote,  R.id.box_remote);
+        setupRemoteControls();
 
         etYt = findViewById(R.id.et_yt);
         etGame = findViewById(R.id.et_game);
@@ -548,6 +551,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void save() {
         applySettingsToPrefs();
+        if (prefs.isParent()) RemoteSync.publish(this); // انشر الحدود الجديدة لأجهزة الأطفال
         if (prefs.enabled()) startMonitoring(); // تطبيق الإعدادات الجديدة فوراً
         // إغلاق التطبيق وإزالته من المهام حتى لا يجده الطفل مفتوحاً في الخلفية
         Toast.makeText(this, R.string.closing, Toast.LENGTH_SHORT).show();
@@ -750,6 +754,80 @@ public class MainActivity extends AppCompatActivity {
 
     private String yesNo(boolean b) {
         return getString(b ? R.string.granted : R.string.not_granted);
+    }
+
+    /** يهيّئ مجموعة التحكّم عن بُعد: الدور، الرابط، رمز العائلة، النشر/المزامنة. */
+    private void setupRemoteControls() {
+        final EditText etUrl = findViewById(R.id.et_sync_url);
+        final EditText etFam = findViewById(R.id.et_family);
+        final android.widget.RadioGroup rg = findViewById(R.id.rg_role);
+        final android.widget.RadioButton rbParent = findViewById(R.id.rb_parent);
+        final android.widget.RadioButton rbChild = findViewById(R.id.rb_child);
+        if (etUrl == null) return;
+
+        etUrl.setText(prefs.syncUrl());
+        etFam.setText(prefs.familyCode());
+        if (prefs.isChild()) rbChild.setChecked(true);
+        else if (prefs.isParent()) rbParent.setChecked(true);
+
+        rg.setOnCheckedChangeListener((group, id) -> {
+            prefs.setRole(id == R.id.rb_child ? Prefs.ROLE_CHILD
+                    : id == R.id.rb_parent ? Prefs.ROLE_PARENT : Prefs.ROLE_NONE);
+            applyRoleLock();
+        });
+
+        findViewById(R.id.btn_gen_code).setOnClickListener(v -> {
+            String code = genCode();
+            etFam.setText(code);
+            Toast.makeText(this, R.string.gen_code, Toast.LENGTH_SHORT).show();
+        });
+
+        findViewById(R.id.btn_save_remote).setOnClickListener(v -> {
+            saveRemote(etUrl, etFam);
+            Toast.makeText(this, R.string.save_settings, Toast.LENGTH_SHORT).show();
+            applyRoleLock();
+        });
+
+        findViewById(R.id.btn_publish).setOnClickListener(v -> {
+            saveRemote(etUrl, etFam);
+            RemoteSync.publishWithResult(this);
+        });
+
+        findViewById(R.id.btn_sync_now).setOnClickListener(v -> {
+            saveRemote(etUrl, etFam);
+            RemoteSync.pull(this, true);
+        });
+
+        applyRoleLock();
+    }
+
+    private void saveRemote(EditText etUrl, EditText etFam) {
+        prefs.setSyncUrl(etUrl.getText().toString());
+        prefs.setFamilyCode(etFam.getText().toString());
+    }
+
+    private static String genCode() {
+        final String a = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+        java.security.SecureRandom r = new java.security.SecureRandom();
+        StringBuilder sb = new StringBuilder("kc-");
+        for (int i = 0; i < 20; i++) sb.append(a.charAt(r.nextInt(a.length())));
+        return sb.toString();
+    }
+
+    /** على جهاز الطفل: تُخفى مجموعات تعديل الحدود ويظهر إشعار؛ على ولي الأمر تظهر كلها. */
+    private void applyRoleLock() {
+        boolean child = prefs.isChild();
+        int vis = child ? View.GONE : View.VISIBLE;
+        int[] ids = {
+                R.id.hdr_limits, R.id.box_limits, R.id.hdr_exclude, R.id.box_exclude,
+                R.id.hdr_times, R.id.box_times, R.id.hdr_break, R.id.box_break,
+                R.id.hdr_auto, R.id.box_auto, R.id.btn_save, R.id.btn_change_pin
+        };
+        for (int id : ids) { View v = findViewById(id); if (v != null) v.setVisibility(vis); }
+        View notice = findViewById(R.id.tv_child_notice);
+        if (notice != null) notice.setVisibility(child ? View.VISIBLE : View.GONE);
+        Button pub = findViewById(R.id.btn_publish);
+        if (pub != null) pub.setVisibility(child ? View.GONE : View.VISIBLE);
     }
 
     /** يربط زر مجموعة بمحتواها: الضغط يفتح/يطوي المجموعة. تُطوى كل المجموعات مبدئياً. */

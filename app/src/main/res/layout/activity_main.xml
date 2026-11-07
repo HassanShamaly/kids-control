@@ -99,6 +99,50 @@
 
             <TextView style="@style/Hint" android:text="@string/settings_accordion_hint" />
 
+            <!-- إشعار جهاز الطفل (يظهر عندما يكون الدور = طفل) -->
+            <TextView android:id="@+id/tv_child_notice"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:visibility="gone"
+                android:text="@string/child_locked_notice"
+                android:textColor="@color/warn"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:padding="14dp"
+                android:background="@drawable/field_bg"
+                android:layout_marginTop="8dp"
+                android:layout_marginBottom="4dp" />
+
+            <!-- ===== التحكّم عن بُعد ===== -->
+            <Button android:id="@+id/hdr_remote" style="@style/GroupHeader" android:text="@string/sec_remote" />
+            <LinearLayout android:id="@+id/box_remote" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:orientation="vertical" android:visibility="gone">
+                <androidx.cardview.widget.CardView style="@style/Card">
+                    <LinearLayout style="@style/CardInner">
+                        <TextView style="@style/Hint" android:text="@string/remote_hint" />
+                        <RadioGroup android:id="@+id/rg_role"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:paddingTop="6dp" android:paddingBottom="6dp">
+                            <RadioButton android:id="@+id/rb_parent" style="@style/Check" android:text="@string/role_parent" />
+                            <RadioButton android:id="@+id/rb_child" style="@style/Check" android:text="@string/role_child" />
+                        </RadioGroup>
+                        <TextView style="@style/FieldLabel" android:text="@string/sync_url_label" />
+                        <EditText android:id="@+id/et_sync_url" style="@style/Num"
+                            android:inputType="textUri" android:hint="https://xxxx.firebaseio.com" />
+                        <TextView style="@style/FieldLabel" android:text="@string/family_label" android:paddingTop="10dp" />
+                        <EditText android:id="@+id/et_family" style="@style/Num"
+                            android:inputType="textVisiblePassword" />
+                        <Button android:id="@+id/btn_gen_code" style="@style/Secondary" android:text="@string/gen_code" />
+                        <Button android:id="@+id/btn_save_remote" style="@style/Secondary" android:text="@string/save_remote" />
+                        <Button android:id="@+id/btn_publish" style="@style/Primary" android:text="@string/publish_now" />
+                        <Button android:id="@+id/btn_sync_now" style="@style/Secondary" android:text="@string/sync_now" />
+                        <TextView android:id="@+id/tv_sync_status" style="@style/Status" />
+                    </LinearLayout>
+                </androidx.cardview.widget.CardView>
+            </LinearLayout>
+
             <!-- ===== المدد ===== -->
             <Button android:id="@+id/hdr_limits" style="@style/GroupHeader" android:text="@string/sec_limits" />
             <LinearLayout android:id="@+id/box_limits" android:layout_width="match_parent"

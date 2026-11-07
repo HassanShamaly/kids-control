@@ -281,4 +281,93 @@ public class Prefs {
     public boolean parentModeActive() {
         return System.currentTimeMillis() < sp.getLong(K_PARENT_UNTIL, 0L);
     }
+
+    // ===== التحكّم عن بُعد (جهاز ولي الأمر يتحكّم، أجهزة الأطفال تقرأ) =====
+    public static final int ROLE_NONE = 0, ROLE_PARENT = 1, ROLE_CHILD = 2;
+    private static final String K_ROLE   = "device_role";
+    private static final String K_FAMILY = "family_code";
+    private static final String K_SYNCURL = "sync_url";
+    private static final String K_LAST_PULL = "last_pull";
+
+    public int role()            { return sp.getInt(K_ROLE, ROLE_NONE); }
+    public void setRole(int v)   { sp.edit().putInt(K_ROLE, v).apply(); }
+    public boolean isParent()    { return role() == ROLE_PARENT; }
+    public boolean isChild()     { return role() == ROLE_CHILD; }
+
+    public String familyCode()   { return sp.getString(K_FAMILY, ""); }
+    public void setFamilyCode(String v) {
+        sp.edit().putString(K_FAMILY, v == null ? "" : v.trim()).apply();
+    }
+    public String syncUrl()      { return sp.getString(K_SYNCURL, ""); }
+    public void setSyncUrl(String v) {
+        String s = v == null ? "" : v.trim();
+        if (s.endsWith("/")) s = s.substring(0, s.length() - 1);
+        sp.edit().putString(K_SYNCURL, s).apply();
+    }
+    public boolean syncConfigured() {
+        return syncUrl().length() > 6 && familyCode().length() > 0;
+    }
+    public long lastPull()       { return sp.getLong(K_LAST_PULL, 0L); }
+    public void setLastPull(long v) { sp.edit().putLong(K_LAST_PULL, v).apply(); }
+
+    /** يجمّع الإعدادات القابلة للمزامنة في JSON (ينشره جهاز ولي الأمر). */
+    public org.json.JSONObject exportConfig() {
+        org.json.JSONObject o = new org.json.JSONObject();
+        try {
+            o.put("yt_on", ytOn());         o.put("game_on", gameOn());
+            o.put("yt", ytLimit());         o.put("game", gameLimit());
+            o.put("cooldown", cooldownSec());
+            o.put("sched_on", schedOn());   o.put("sched_from", schedFrom()); o.put("sched_to", schedTo());
+            o.put("relax_on", relaxOn());   o.put("relax_limit", relaxLimit());
+            o.put("relax_days", new org.json.JSONArray(relaxDays()));
+            o.put("night_on", nightOn());   o.put("night_from", nightFrom()); o.put("night_to", nightTo()); o.put("night_limit", nightLimit());
+            o.put("break_min", breakMinutes()); o.put("break_thr", breakThreshold());
+            o.put("resume_min", resumeMinutes());
+            o.put("revert_on", revertOn()); o.put("revert_min", revertMinutes());
+            o.put("exc_fb", excludeFb());   o.put("exc_ig", excludeIg());
+            o.put("allowed", new org.json.JSONArray(getSet(K_ALLOWED)));
+            o.put("rev", System.currentTimeMillis());
+        } catch (Exception ignored) { }
+        return o;
+    }
+
+    /** يطبّق إعدادات واردة من جهاز ولي الأمر (على جهاز الطفل). */
+    public void applyConfig(org.json.JSONObject o) {
+        if (o == null) return;
+        SharedPreferences.Editor e = sp.edit();
+        if (o.has("yt_on"))       e.putBoolean(K_YT_ON, o.optBoolean("yt_on", ytOn()));
+        if (o.has("game_on"))     e.putBoolean(K_GAME_ON, o.optBoolean("game_on", gameOn()));
+        if (o.has("yt"))          e.putInt(K_YT_LIMIT, o.optInt("yt", ytLimit()));
+        if (o.has("game"))        e.putInt(K_GAME_LIMIT, o.optInt("game", gameLimit()));
+        if (o.has("cooldown"))    e.putInt(K_COOLDOWN, o.optInt("cooldown", cooldownSec()));
+        if (o.has("sched_on"))    e.putBoolean(K_SCHED_ON, o.optBoolean("sched_on", schedOn()));
+        if (o.has("sched_from"))  e.putInt(K_SCHED_FROM, o.optInt("sched_from", schedFrom()));
+        if (o.has("sched_to"))    e.putInt(K_SCHED_TO, o.optInt("sched_to", schedTo()));
+        if (o.has("relax_on"))    e.putBoolean(K_RELAX_ON, o.optBoolean("relax_on", relaxOn()));
+        if (o.has("relax_limit")) e.putInt(K_RELAX_LIMIT, o.optInt("relax_limit", relaxLimit()));
+        if (o.has("night_on"))    e.putBoolean(K_NIGHT_ON, o.optBoolean("night_on", nightOn()));
+        if (o.has("night_from"))  e.putInt(K_NIGHT_FROM, o.optInt("night_from", nightFrom()));
+        if (o.has("night_to"))    e.putInt(K_NIGHT_TO, o.optInt("night_to", nightTo()));
+        if (o.has("night_limit")) e.putInt(K_NIGHT_LIMIT, o.optInt("night_limit", nightLimit()));
+        if (o.has("break_min"))   e.putInt(K_BREAK_MIN, o.optInt("break_min", breakMinutes()));
+        if (o.has("break_thr"))   e.putInt(K_BREAK_THRESHOLD, o.optInt("break_thr", breakThreshold()));
+        if (o.has("resume_min"))  e.putInt(K_RESUME_MIN, o.optInt("resume_min", resumeMinutes()));
+        if (o.has("revert_on"))   e.putBoolean(K_REVERT_ON, o.optBoolean("revert_on", revertOn()));
+        if (o.has("revert_min"))  e.putInt(K_REVERT_MIN, o.optInt("revert_min", revertMinutes()));
+        if (o.has("exc_fb"))      e.putBoolean(K_EXCLUDE_FB, o.optBoolean("exc_fb", excludeFb()));
+        if (o.has("exc_ig"))      e.putBoolean(K_EXCLUDE_IG, o.optBoolean("exc_ig", excludeIg()));
+        e.apply();
+        if (o.has("relax_days")) {
+            java.util.Set<String> s = new java.util.HashSet<>();
+            org.json.JSONArray a = o.optJSONArray("relax_days");
+            if (a != null) for (int i = 0; i < a.length(); i++) s.add(a.optString(i));
+            putSet(K_RELAX_DAYS, s);
+        }
+        if (o.has("allowed")) {
+            java.util.Set<String> s = new java.util.HashSet<>();
+            org.json.JSONArray a = o.optJSONArray("allowed");
+            if (a != null) for (int i = 0; i < a.length(); i++) s.add(a.optString(i));
+            putSet(K_ALLOWED, s);
+        }
+    }
 }

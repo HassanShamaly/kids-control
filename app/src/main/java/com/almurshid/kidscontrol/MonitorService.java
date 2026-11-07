@@ -225,6 +225,9 @@ public class MonitorService extends Service {
         if (delta < 0 || delta > 60_000L) delta = POLL_MS;
         lastPollTs = now;
 
+        // جهاز الطفل: اسحب إعدادات ولي الأمر دورياً وطبّقها
+        RemoteSync.pullIfDue(this, 60_000L);
+
         // المراقبة متوقفة: عُد تلقائياً عند حلول الموعد، وإلا اعرض إشعار الحالة
         if (!prefs.enabled()) {
             long rAt = prefs.resumeAt();

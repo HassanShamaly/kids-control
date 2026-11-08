@@ -22,6 +22,24 @@ public class RemoteSync {
 
     private static volatile long lastPullTs = 0L;
 
+    /**
+     * على جهاز الطفل: إن حمل الإعداد أمر فتح قفل (unlock) أحدث مما رُئي سابقاً وكان حديثاً
+     * (خلال 15 دقيقة)، ننفّذه مرة واحدة عبر خدمة المراقبة. يمنع التكرار بحفظ آخر طابع رُئي.
+     */
+    private static void maybeRemoteUnlock(Context c, Prefs p, org.json.JSONObject o) {
+        try {
+            if (!p.isChild()) return;
+            long unlock = o.optLong("unlock", 0L);
+            if (unlock <= 0) return;
+            long now = System.currentTimeMillis();
+            if (unlock <= p.lastUnlockSeen()) return;        // نُفّذ سابقاً
+            p.setLastUnlockSeen(unlock);
+            if (now - unlock > 15 * 60_000L) return;         // قديم: تجاهله (لجهاز أُضيف حديثاً)
+            c.startService(new android.content.Intent(c, MonitorService.class)
+                    .setAction(MonitorService.ACTION_REMOTE_UNLOCK));
+        } catch (Throwable ignored) { }
+    }
+
     private static String node(Prefs p) {
         String base = p.syncUrl();
         if (base.endsWith("/")) base = base.substring(0, base.length() - 1);
@@ -142,9 +160,11 @@ public class RemoteSync {
             boolean applied = false;
             if (hasData) {
                 try {
-                    p.applyConfig(new org.json.JSONObject(fbody));
+                    org.json.JSONObject o = new org.json.JSONObject(fbody);
+                    p.applyConfig(o);
                     p.setLastPull(System.currentTimeMillis());
                     applied = true;
+                    maybeRemoteUnlock(c, p, o);
                 } catch (Throwable ignored) { }
             }
             final boolean fapplied = applied;

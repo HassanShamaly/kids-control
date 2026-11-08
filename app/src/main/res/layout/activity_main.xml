@@ -138,6 +138,7 @@
                         <Button android:id="@+id/btn_save_remote" style="@style/Secondary" android:text="@string/save_remote" />
                         <Button android:id="@+id/btn_publish" style="@style/Primary" android:text="@string/publish_now" />
                         <Button android:id="@+id/btn_sync_now" style="@style/Secondary" android:text="@string/sync_now" />
+                        <Button android:id="@+id/btn_remote_unlock" style="@style/Danger" android:text="@string/remote_unlock" />
                         <TextView android:id="@+id/tv_sync_status" style="@style/Status" />
                     </LinearLayout>
                 </androidx.cardview.widget.CardView>

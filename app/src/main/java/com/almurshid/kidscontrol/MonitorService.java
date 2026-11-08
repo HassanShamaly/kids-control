@@ -54,6 +54,7 @@ public class MonitorService extends Service {
     public static final String ACTION_SUPPRESS_OVERLAY = "com.almurshid.kidscontrol.SUPPRESS_OVERLAY"; // أخفِ الطبقة مؤقتاً لإدخال الرقم
     public static final String ACTION_RESHOW_OVERLAY   = "com.almurshid.kidscontrol.RESHOW_OVERLAY";
     public static final String ACTION_EMERGENCY        = "com.almurshid.kidscontrol.EMERGENCY";  // مدخل الطوارئ من الإشعار
+    public static final String ACTION_REMOTE_UNLOCK    = "com.almurshid.kidscontrol.REMOTE_UNLOCK"; // فتح القفل عن بُعد من جوال ولي الأمر
 
     private static final String CH_ID = "kids_control_status";
     private static final int NOTIF_ID = 1001;
@@ -204,6 +205,14 @@ public class MonitorService extends Service {
         }
         if (ACTION_EMERGENCY.equals(action)) {
             if (bgHandler != null) bgHandler.post(this::startEmergencyUnlock);
+            return START_STICKY;
+        }
+        if (ACTION_REMOTE_UNLOCK.equals(action)) {
+            // فتح القفل عن بُعد من جوال ولي الأمر (ينهي الاستراحة أو يمنح جلسة جديدة)
+            if (bgHandler != null) bgHandler.post(() -> {
+                if (breakUntil > System.currentTimeMillis()) endBreak();
+                else onUnlocked();
+            });
             return START_STICKY;
         }
         if (ACTION_START.equals(action)) {
@@ -622,9 +631,7 @@ public class MonitorService extends Service {
                 : getString(R.string.lock_games));
         android.widget.Button bu = overlay.findViewById(R.id.btn_unlock);
         View sub = overlay.findViewById(R.id.lock_sub);
-        // إيماءة سرّية: 5 ضغطات متتالية على الطبقة تفتح مدخل الطوارئ (تعمل في القفل والاستراحة)
-        secretTaps = 0;
-        overlay.setOnClickListener(v -> onOverlayTap());
+        // لا مخرج طوارئ محلي: فكّ القفل عند الطوارئ يكون من جوال ولي الأمر عن بُعد
         if (onBreak) {
             // أثناء الاستراحة: عدّاد فقط بلا زر، ليظن الطفل ألا حلّ. الطوارئ بالإيماءة السرّية.
             bu.setVisibility(View.GONE);
@@ -660,20 +667,6 @@ public class MonitorService extends Service {
         }, 250L);
     }
 
-    // إيماءة سرّية: 5 ضغطات متتالية على شاشة القفل تفتح مدخل الطوارئ (بلا أي أثر مرئي)
-    private int secretTaps = 0;
-    private long lastTapTs = 0L;
-    private void onOverlayTap() {
-        long now = System.currentTimeMillis();
-        if (now - lastTapTs > 1200L) secretTaps = 0; // ضغطات سريعة متتالية // يجب أن تكون متتالية
-        lastTapTs = now;
-        secretTaps++;
-        if (secretTaps >= 10) {
-            secretTaps = 0;
-            if (bgHandler != null) bgHandler.post(this::startEmergencyUnlock);
-        }
-    }
-
     private void removeOverlay() {
         if (overlay != null) {
             try { wm.removeView(overlay); } catch (Throwable ignored) {}
@@ -693,6 +686,8 @@ public class MonitorService extends Service {
     private static final int ACT_NONE = 0, ACT_STOP = 1, ACT_START = 2, ACT_BREAK = 3;
 
     private Notification buildNotification(String title, String text, String big, int actionMode) {
+        // على جهاز الطفل: لا يظهر إجراء «إيقاف» في الإشعار (التحكّم من جوال ولي الأمر)
+        if (actionMode == ACT_STOP && prefs.isChild()) actionMode = ACT_NONE;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel ch = new NotificationChannel(
                     CH_ID, getString(R.string.notif_channel), NotificationManager.IMPORTANCE_DEFAULT);

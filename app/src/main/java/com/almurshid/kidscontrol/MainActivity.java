@@ -106,6 +106,7 @@ public class MainActivity extends AppCompatActivity {
         findViewById(R.id.btn_home_start).setOnClickListener(v -> startMonitoring()); // تشغيل بضغطة
         findViewById(R.id.btn_home_stop).setOnClickListener(v -> confirmStop());      // إيقاف برقم سري
         findViewById(R.id.btn_home_close).setOnClickListener(v -> confirmFullClose()); // إغلاق تام برقم سري
+        applyHomeRoleLock(prefs.isChild()); // إخفاء الإيقاف/الإغلاق على جهاز الطفل
         findViewById(R.id.btn_open_settings).setOnClickListener(v -> openSettings()); // رقم سري + بصمة
         findViewById(R.id.btn_download_latest).setOnClickListener(v -> UpdateChecker.check(this, true));
         TextView ver = findViewById(R.id.tv_version);
@@ -799,6 +800,13 @@ public class MainActivity extends AppCompatActivity {
             RemoteSync.pull(this, true);
         });
 
+        findViewById(R.id.btn_remote_unlock).setOnClickListener(v -> {
+            saveRemote(etUrl, etFam);
+            prefs.setRemoteUnlockTs(System.currentTimeMillis()); // أمر فتح جديد
+            RemoteSync.publish(this);                            // انشر الإعداد ومعه أمر الفتح
+            Toast.makeText(this, R.string.remote_unlock_sent, Toast.LENGTH_LONG).show();
+        });
+
         applyRoleLock();
     }
 
@@ -822,13 +830,28 @@ public class MainActivity extends AppCompatActivity {
         int[] ids = {
                 R.id.hdr_limits, R.id.box_limits, R.id.hdr_exclude, R.id.box_exclude,
                 R.id.hdr_times, R.id.box_times, R.id.hdr_break, R.id.box_break,
-                R.id.hdr_auto, R.id.box_auto, R.id.btn_save, R.id.btn_change_pin
+                R.id.hdr_auto, R.id.box_auto, R.id.btn_save, R.id.btn_change_pin,
+                R.id.hdr_run, R.id.box_run   // مجموعة التشغيل (فيها الإيقاف) تُخفى على جهاز الطفل
         };
         for (int id : ids) { View v = findViewById(id); if (v != null) v.setVisibility(vis); }
         View notice = findViewById(R.id.tv_child_notice);
         if (notice != null) notice.setVisibility(child ? View.VISIBLE : View.GONE);
+        // «نشر» و«فتح القفل» إجراءات ولي الأمر فقط
         Button pub = findViewById(R.id.btn_publish);
         if (pub != null) pub.setVisibility(child ? View.GONE : View.VISIBLE);
+        Button runlock = findViewById(R.id.btn_remote_unlock);
+        if (runlock != null) runlock.setVisibility(child ? View.GONE : View.VISIBLE);
+        // أزرار الإيقاف/الإغلاق في الشاشة الرئيسية تُخفى على جهاز الطفل
+        applyHomeRoleLock(child);
+    }
+
+    /** على جهاز الطفل: تُخفى أزرار الإيقاف/الإغلاق التام من الشاشة الرئيسية. */
+    private void applyHomeRoleLock(boolean child) {
+        int v = child ? View.GONE : View.VISIBLE;
+        View stop = findViewById(R.id.btn_home_stop);
+        View close = findViewById(R.id.btn_home_close);
+        if (stop != null) stop.setVisibility(v);
+        if (close != null) close.setVisibility(v);
     }
 
     /** يربط زر مجموعة بمحتواها: الضغط يفتح/يطوي المجموعة. تُطوى كل المجموعات مبدئياً. */

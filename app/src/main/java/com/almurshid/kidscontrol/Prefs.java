@@ -312,6 +312,14 @@ public class Prefs {
     public long lastPull()       { return sp.getLong(K_LAST_PULL, 0L); }
     public void setLastPull(long v) { sp.edit().putLong(K_LAST_PULL, v).apply(); }
 
+    // أمر الفتح عن بُعد: ولي الأمر يضبط طابعاً زمنياً جديداً؛ الطفل ينفّذه مرة واحدة إن كان حديثاً
+    private static final String K_UNLOCK_CMD = "remote_unlock_ts";   // على جهاز ولي الأمر
+    private static final String K_UNLOCK_SEEN = "remote_unlock_seen"; // على جهاز الطفل
+    public long remoteUnlockTs()        { return sp.getLong(K_UNLOCK_CMD, 0L); }
+    public void setRemoteUnlockTs(long v){ sp.edit().putLong(K_UNLOCK_CMD, v).apply(); }
+    public long lastUnlockSeen()        { return sp.getLong(K_UNLOCK_SEEN, 0L); }
+    public void setLastUnlockSeen(long v){ sp.edit().putLong(K_UNLOCK_SEEN, v).apply(); }
+
     /** يجمّع الإعدادات القابلة للمزامنة في JSON (ينشره جهاز ولي الأمر). */
     public org.json.JSONObject exportConfig() {
         org.json.JSONObject o = new org.json.JSONObject();
@@ -328,6 +336,7 @@ public class Prefs {
             o.put("revert_on", revertOn()); o.put("revert_min", revertMinutes());
             o.put("exc_fb", excludeFb());   o.put("exc_ig", excludeIg());
             o.put("allowed", new org.json.JSONArray(getSet(K_ALLOWED)));
+            o.put("unlock", remoteUnlockTs());   // أمر فتح القفل عن بُعد
             o.put("rev", System.currentTimeMillis());
         } catch (Exception ignored) { }
         return o;

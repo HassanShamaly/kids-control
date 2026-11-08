@@ -152,6 +152,29 @@ public class RemoteSync {
         }).start();
     }
 
+    /** ينشر كائن إعداد جاهز إلى الجهاز المحدَّد (لا يقرأ إعدادات جهاز ولي الأمر إطلاقاً). */
+    public static void publishConfigToTarget(final Context c, final String targetId,
+                                             final org.json.JSONObject config, final boolean showResult) {
+        final Prefs p = new Prefs(c);
+        final Handler ui = new Handler(Looper.getMainLooper());
+        if (targetId == null || targetId.isEmpty()) {
+            if (showResult) Toast.makeText(c, R.string.dev_pick_first, Toast.LENGTH_LONG).show();
+            return;
+        }
+        if (!p.syncConfigured()) {
+            if (showResult) Toast.makeText(c, R.string.sync_need_setup, Toast.LENGTH_LONG).show();
+            return;
+        }
+        try { config.put("rev", System.currentTimeMillis()); } catch (Throwable ignored) { }
+        final String url = configNode(p, targetId);
+        final String body = config.toString();
+        new Thread(() -> {
+            boolean ok = write(url, "PUT", body);
+            if (showResult) ui.post(() -> Toast.makeText(c,
+                    ok ? R.string.sync_published : R.string.sync_failed, Toast.LENGTH_LONG).show());
+        }).start();
+    }
+
     /** يرسل أمر فتح قفل للجهاز المحدَّد فقط (تحديث حقل unlock دون المساس ببقية الإعداد). */
     public static void unlockTarget(final Context c, final String targetId, final boolean showResult) {
         final Prefs p = new Prefs(c);

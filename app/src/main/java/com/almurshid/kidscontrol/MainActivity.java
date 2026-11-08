@@ -552,7 +552,8 @@ public class MainActivity extends AppCompatActivity {
 
     private void save() {
         applySettingsToPrefs();
-        if (prefs.isParent()) RemoteSync.publishToTarget(this, prefs.targetId(), false); // انشر للجهاز المحدَّد
+        // ملاحظة: على جهاز ولي الأمر النشر للأجهزة يتم من زر «حفظ وإرسال» في لوحة الأجهزة،
+        // لا من هذا الحفظ، حتى لا تُنشر إعدادات جهازك إلى الأطفال.
         if (prefs.enabled()) startMonitoring(); // تطبيق الإعدادات الجديدة فوراً
         // إغلاق التطبيق وإزالته من المهام حتى لا يجده الطفل مفتوحاً في الخلفية
         Toast.makeText(this, R.string.closing, Toast.LENGTH_SHORT).show();
@@ -852,7 +853,10 @@ public class MainActivity extends AppCompatActivity {
         sp.setAdapter(ad);
     }
 
-    /** يطبّق الباقة/الأرقام الحالية وينشرها للجهاز المحدَّد، مع البقاء في الإعدادات. */
+    /**
+     * يطبّق الباقة/الأرقام على نسخة إعداد الجهاز المحدَّد وينشرها — دون أي مساس
+     * بإعدادات جوال ولي الأمر نفسه، ومع البقاء في الإعدادات.
+     */
     private void saveAndSend() {
         String id = prefs.targetId();
         if (id == null || id.isEmpty()) {
@@ -861,13 +865,17 @@ public class MainActivity extends AppCompatActivity {
         }
         EditText etQuota = findViewById(R.id.et_quota);
         int q = Math.max(1, parseInt(etQuota.getText().toString(), 30));
-        prefs.setYtLimit(q);
-        prefs.setGameLimit(q);
-        prefs.setYtOn(true);
-        prefs.setGameOn(true);
-        prefs.setExcludeFb(((CheckBox) findViewById(R.id.cb_q_fb)).isChecked());
-        prefs.setExcludeIg(((CheckBox) findViewById(R.id.cb_q_ig)).isChecked());
-        RemoteSync.publishToTarget(this, id, true);   // يعرض نتيجة ولا يغلق الإعدادات
+        org.json.JSONObject cfg = (mTargetConfig != null) ? mTargetConfig : new org.json.JSONObject();
+        try {
+            cfg.put("yt", q);
+            cfg.put("game", q);
+            cfg.put("yt_on", true);
+            cfg.put("game_on", true);
+            cfg.put("exc_fb", ((CheckBox) findViewById(R.id.cb_q_fb)).isChecked());
+            cfg.put("exc_ig", ((CheckBox) findViewById(R.id.cb_q_ig)).isChecked());
+        } catch (Exception ignored) { }
+        mTargetConfig = cfg;
+        RemoteSync.publishConfigToTarget(this, id, cfg, true);   // لا يقرأ إعدادات جهازك
     }
 
     private void saveRemote(EditText etUrl, EditText etFam, EditText etName) {
@@ -883,51 +891,23 @@ public class MainActivity extends AppCompatActivity {
         t.setText(id.isEmpty() ? "" : getString(R.string.dev_selected_fmt, id));
     }
 
-    /** اختيار جهاز للضبط: يحفظه كهدف، ويحمّل إعداده الحالي في الحقول. */
+    private org.json.JSONObject mTargetConfig;   // نسخة إعداد الجهاز المحدَّد (مستقلة عن إعدادات جهازك)
+
+    /** اختيار جهاز للضبط: يحفظه كهدف، ويحمّل إعداده في لوحة الباقة فقط (دون لمس إعدادات جهازك). */
     private void selectTarget(final RemoteSync.Device d) {
         prefs.setTargetId(d.id);
         updateTargetLabel();
         RemoteSync.fetchTargetConfig(this, d.id, (config, ok) -> {
-            if (config != null) prefs.applyConfig(config);  // حمّل حدود هذا الجهاز
-            reloadFieldsFromPrefs();
-            loadQuotaPanel();
+            mTargetConfig = (config != null) ? config : new org.json.JSONObject();
+            int q = Math.max(mTargetConfig.optInt("yt", 30), mTargetConfig.optInt("game", 30));
+            EditText etQuota = findViewById(R.id.et_quota);
+            if (etQuota != null) etQuota.setText(String.valueOf(Math.max(1, q)));
+            CheckBox fb = findViewById(R.id.cb_q_fb);
+            CheckBox ig = findViewById(R.id.cb_q_ig);
+            if (fb != null) fb.setChecked(mTargetConfig.optBoolean("exc_fb", false));
+            if (ig != null) ig.setChecked(mTargetConfig.optBoolean("exc_ig", false));
             Toast.makeText(this, getString(R.string.dev_loaded_fmt, d.name), Toast.LENGTH_LONG).show();
         });
-    }
-
-    /** يملأ لوحة الباقة السريعة (المدة + الاستثناءات) من الإعدادات المحمّلة. */
-    private void loadQuotaPanel() {
-        EditText etQuota = findViewById(R.id.et_quota);
-        if (etQuota != null) etQuota.setText(String.valueOf(Math.max(prefs.ytLimit(), prefs.gameLimit())));
-        CheckBox fb = findViewById(R.id.cb_q_fb);
-        CheckBox ig = findViewById(R.id.cb_q_ig);
-        if (fb != null) fb.setChecked(prefs.excludeFb());
-        if (ig != null) ig.setChecked(prefs.excludeIg());
-    }
-
-    /** يعيد تحميل حقول الحدود من الإعدادات (بعد اختيار جهاز). */
-    private void reloadFieldsFromPrefs() {
-        if (etYt == null) return;
-        etYt.setText(String.valueOf(prefs.ytLimit()));
-        etGame.setText(String.valueOf(prefs.gameLimit()));
-        etCooldown.setText(String.valueOf(Math.max(1, prefs.cooldownSec() / 60)));
-        cbYt.setChecked(prefs.ytOn());
-        cbGame.setChecked(prefs.gameOn());
-        cbSchedule.setChecked(prefs.schedOn());
-        schedFrom = prefs.schedFrom(); schedTo = prefs.schedTo(); updateSchedButtons();
-        cbNight.setChecked(prefs.nightOn());
-        nightFrom = prefs.nightFrom(); nightTo = prefs.nightTo(); updateNightButtons();
-        etNightLimit.setText(String.valueOf(prefs.nightLimit()));
-        etBreakThreshold.setText(String.valueOf(prefs.breakThreshold()));
-        etBreakMinutes.setText(String.valueOf(prefs.breakMinutes()));
-        etResume.setText(String.valueOf(prefs.resumeMinutes()));
-        cbRelax.setChecked(prefs.relaxOn());
-        etRelaxLimit.setText(String.valueOf(prefs.relaxLimit()));
-        relaxDays = prefs.relaxDays();
-        cbExcludeFb.setChecked(prefs.excludeFb());
-        cbExcludeIg.setChecked(prefs.excludeIg());
-        cbRevert.setChecked(prefs.revertOn());
-        etRevert.setText(String.valueOf(prefs.revertMinutes()));
     }
 
     private static String genCode() {

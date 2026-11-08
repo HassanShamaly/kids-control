@@ -144,7 +144,17 @@
     <string name="sync_failed">تعذّرت العملية — تأكد من الإنترنت والرابط والرمز</string>
     <string name="sync_empty">لا توجد إعدادات منشورة بعد. انشر من جهاز ولي الأمر أولاً (زر «نشر الإعدادات إلى الأجهزة»).</string>
     <string name="remote_unlock">فتح قفل أجهزة الأطفال الآن (طوارئ)</string>
-    <string name="remote_unlock_sent">تم إرسال أمر الفتح — سيُفتح على أجهزة الأطفال خلال لحظات</string>
+    <string name="remote_unlock_sent">تم إرسال أمر الفتح — سيُفتح خلال لحظات</string>
+    <string name="device_name_label">اسم هذا الجهاز (يظهر في قائمة ولي الأمر)</string>
+    <string name="devices_hint">أجهزة الأطفال المسجّلة — اختر جهازاً لضبط حدوده أو فتحه:</string>
+    <string name="refresh_devices">تحديث قائمة الأجهزة</string>
+    <string name="dev_configure">ضبط</string>
+    <string name="dev_unlock">فتح</string>
+    <string name="dev_pick_first">اختر جهازاً من القائمة أولاً</string>
+    <string name="dev_none">لا توجد أجهزة مسجّلة بعد. اضبط جهاز الطفل (دور=طفل + اسم + حفظ) أولاً.</string>
+    <string name="dev_selected_fmt">الجهاز المحدَّد: %1$s</string>
+    <string name="dev_loaded_fmt">تم تحميل إعدادات «%1$s» — عدّل الحدود ثم اضغط حفظ</string>
+    <string name="publish_target">نشر الحدود إلى الجهاز المحدَّد</string>
     <string name="child_locked_notice">هذا الجهاز يُدار عن بُعد من جهاز ولي الأمر. تُضبط الحدود من جواله، ولا يمكن تعديلها هنا.</string>
     <string name="show_advanced">عرض الإعدادات المتقدمة</string>
     <string name="sec_limits">المدد</string>

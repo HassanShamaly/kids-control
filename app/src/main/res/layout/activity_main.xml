@@ -135,9 +135,21 @@
                         <EditText android:id="@+id/et_family" style="@style/Num"
                             android:inputType="textVisiblePassword" />
                         <Button android:id="@+id/btn_gen_code" style="@style/Secondary" android:text="@string/gen_code" />
+                        <TextView style="@style/FieldLabel" android:text="@string/device_name_label" android:paddingTop="10dp" />
+                        <EditText android:id="@+id/et_device_name" style="@style/Num"
+                            android:inputType="textPersonName" />
                         <Button android:id="@+id/btn_save_remote" style="@style/Secondary" android:text="@string/save_remote" />
-                        <Button android:id="@+id/btn_publish" style="@style/Primary" android:text="@string/publish_now" />
                         <Button android:id="@+id/btn_sync_now" style="@style/Secondary" android:text="@string/sync_now" />
+
+                        <!-- قائمة الأجهزة (جهاز ولي الأمر) -->
+                        <View style="@style/Divider" />
+                        <TextView android:id="@+id/tv_devices_hint" style="@style/Hint" android:text="@string/devices_hint" />
+                        <Button android:id="@+id/btn_refresh_devices" style="@style/Secondary" android:text="@string/refresh_devices" />
+                        <LinearLayout android:id="@+id/ll_devices"
+                            android:layout_width="match_parent" android:layout_height="wrap_content"
+                            android:orientation="vertical" />
+                        <TextView android:id="@+id/tv_target" style="@style/Status" />
+                        <Button android:id="@+id/btn_publish" style="@style/Primary" android:text="@string/publish_target" />
                         <Button android:id="@+id/btn_remote_unlock" style="@style/Danger" android:text="@string/remote_unlock" />
                         <TextView android:id="@+id/tv_sync_status" style="@style/Status" />
                     </LinearLayout>

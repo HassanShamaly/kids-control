@@ -1,6 +1,8 @@
 package com.almurshid.kidscontrol;
 
 import android.content.Context;
+import android.content.Intent;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.widget.Toast;
@@ -12,116 +14,75 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
- * مزامنة الإعدادات عبر Firebase Realtime Database باستخدام واجهة REST مباشرة
- * (بدون مكتبة Firebase، فلا يتغيّر نظام البناء). جهاز ولي الأمر ينشر (PUT)،
- * وأجهزة الأطفال تقرأ (GET) وتطبّق. كل العمليات دفاعية: أي خطأ شبكة يُتجاهل بهدوء.
+ * مزامنة الإعدادات عبر Firebase Realtime Database (REST مباشر، بلا مكتبة Firebase).
+ * لكل جهاز ملفّه المستقل:
+ *   /kc/{code}/devices/{deviceId}/config   ← يكتبها جهاز ولي الأمر (الحدود + أمر الفتح)
+ *   /kc/{code}/devices/{deviceId}/meta     ← يكتبها جهاز الطفل (اسمه وآخر ظهور)
+ * جهاز ولي الأمر يقرأ قائمة الأجهزة من /kc/{code}/devices.
+ * كل العمليات دفاعية: أي خطأ شبكة يُتجاهل بهدوء.
  */
 public class RemoteSync {
 
     private static volatile long lastPullTs = 0L;
 
-    /**
-     * على جهاز الطفل: إن حمل الإعداد أمر فتح قفل (unlock) أحدث مما رُئي سابقاً وكان حديثاً
-     * (خلال 15 دقيقة)، ننفّذه مرة واحدة عبر خدمة المراقبة. يمنع التكرار بحفظ آخر طابع رُئي.
-     */
-    private static void maybeRemoteUnlock(Context c, Prefs p, org.json.JSONObject o) {
-        try {
-            if (!p.isChild()) return;
-            long unlock = o.optLong("unlock", 0L);
-            if (unlock <= 0) return;
-            long now = System.currentTimeMillis();
-            if (unlock <= p.lastUnlockSeen()) return;        // نُفّذ سابقاً
-            p.setLastUnlockSeen(unlock);
-            if (now - unlock > 15 * 60_000L) return;         // قديم: تجاهله (لجهاز أُضيف حديثاً)
-            c.startService(new android.content.Intent(c, MonitorService.class)
-                    .setAction(MonitorService.ACTION_REMOTE_UNLOCK));
-        } catch (Throwable ignored) { }
+    public static class Device {
+        public final String id, name;
+        public final long lastSeen;
+        Device(String id, String name, long lastSeen) { this.id = id; this.name = name; this.lastSeen = lastSeen; }
     }
+    public interface DevicesCallback { void onResult(List<Device> devices, boolean ok); }
+    public interface ConfigCallback { void onResult(org.json.JSONObject config, boolean ok); }
 
-    private static String node(Prefs p) {
-        String base = p.syncUrl();
-        if (base.endsWith("/")) base = base.substring(0, base.length() - 1);
-        String code;
-        try { code = URLEncoder.encode(p.familyCode(), "UTF-8"); }
-        catch (Exception e) { code = p.familyCode(); }
-        return base + "/kc/" + code + ".json";
+    // ===== مسارات =====
+    private static String base(Prefs p) {
+        String b = p.syncUrl();
+        if (b.endsWith("/")) b = b.substring(0, b.length() - 1);
+        return b;
     }
+    private static String enc(String s) {
+        try { return URLEncoder.encode(s, "UTF-8"); } catch (Exception e) { return s; }
+    }
+    private static String devicesRoot(Prefs p) { return base(p) + "/kc/" + enc(p.familyCode()) + "/devices"; }
+    private static String configNode(Prefs p, String id) { return devicesRoot(p) + "/" + enc(id) + "/config.json"; }
+    private static String metaNode(Prefs p, String id) { return devicesRoot(p) + "/" + enc(id) + "/meta.json"; }
 
-    /** جهاز ولي الأمر: ينشر الإعدادات الحالية. */
-    public static void publish(final Context c) {
+    // ===== جهاز الطفل =====
+
+    /** يسجّل هذا الجهاز (اسمه وآخر ظهور) ليظهر في قائمة جهاز ولي الأمر. */
+    public static void registerDevice(final Context c) {
         final Prefs p = new Prefs(c);
-        if (!p.isParent() || !p.syncConfigured()) return;
-        final String url = node(p);
-        final String body = p.exportConfig().toString();
+        if (!p.isChild() || !p.syncConfigured()) return;
+        final String url = metaNode(p, p.deviceId());
+        String nm = p.deviceName();
+        if (nm == null || nm.isEmpty()) nm = Build.MODEL;
+        final String name = nm;
         new Thread(() -> {
-            HttpURLConnection con = null;
             try {
-                con = (HttpURLConnection) new URL(url).openConnection();
-                con.setRequestMethod("PUT");
-                con.setDoOutput(true);
-                con.setConnectTimeout(15000);
-                con.setReadTimeout(20000);
-                con.setRequestProperty("Content-Type", "application/json; charset=utf-8");
-                try (OutputStream os = con.getOutputStream()) {
-                    os.write(body.getBytes("UTF-8"));
-                }
-                con.getResponseCode();
-            } catch (Throwable ignored) {
-            } finally {
-                if (con != null) try { con.disconnect(); } catch (Throwable ignored) { }
-            }
+                org.json.JSONObject o = new org.json.JSONObject();
+                o.put("name", name);
+                o.put("model", Build.MODEL);
+                o.put("lastSeen", System.currentTimeMillis());
+                write(url, "PUT", o.toString());
+            } catch (Throwable ignored) { }
         }).start();
     }
 
-    /** جهاز ولي الأمر: ينشر مع إظهار نتيجة للمستخدم. */
-    public static void publishWithResult(final Context c) {
-        final Prefs p = new Prefs(c);
-        final Handler ui = new Handler(Looper.getMainLooper());
-        if (!p.syncConfigured()) {
-            Toast.makeText(c, R.string.sync_need_setup, Toast.LENGTH_LONG).show();
-            return;
-        }
-        final String url = node(p);
-        final String body = p.exportConfig().toString();
-        new Thread(() -> {
-            HttpURLConnection con = null;
-            boolean ok = false;
-            try {
-                con = (HttpURLConnection) new URL(url).openConnection();
-                con.setRequestMethod("PUT");
-                con.setDoOutput(true);
-                con.setConnectTimeout(15000);
-                con.setReadTimeout(20000);
-                con.setRequestProperty("Content-Type", "application/json; charset=utf-8");
-                try (OutputStream os = con.getOutputStream()) {
-                    os.write(body.getBytes("UTF-8"));
-                }
-                int code = con.getResponseCode();
-                ok = code >= 200 && code < 300;
-            } catch (Throwable ignored) {
-            } finally {
-                if (con != null) try { con.disconnect(); } catch (Throwable ignored) { }
-            }
-            final boolean fok = ok;
-            ui.post(() -> Toast.makeText(c,
-                    fok ? R.string.sync_published : R.string.sync_failed,
-                    Toast.LENGTH_LONG).show());
-        }).start();
-    }
-
-    /** جهاز الطفل: يسحب الإعدادات إن مرّ وقت كافٍ منذ آخر سحب (يُستدعى من حلقة المراقبة). */
+    /** يسحب هذا الجهاز إعداده إن مرّ وقت كافٍ (من حلقة المراقبة)، ويجدّد تسجيله. */
     public static void pullIfDue(Context c, long minIntervalMs) {
         Prefs p = new Prefs(c);
         if (!p.isChild() || !p.syncConfigured()) return;
         long now = System.currentTimeMillis();
         if (now - lastPullTs < minIntervalMs) return;
         lastPullTs = now;
+        registerDevice(c);
         pull(c, false);
     }
 
-    /** سحب فوري (يُستدعى عند فتح التطبيق أو بزر «مزامنة الآن»). */
+    /** جهاز الطفل: يقرأ إعداده الخاص ويطبّقه (وينفّذ أمر الفتح إن وُجد). */
     public static void pull(final Context c, final boolean showResult) {
         final Prefs p = new Prefs(c);
         final Handler ui = new Handler(Looper.getMainLooper());
@@ -129,38 +90,16 @@ public class RemoteSync {
             if (showResult) Toast.makeText(c, R.string.sync_need_setup, Toast.LENGTH_LONG).show();
             return;
         }
-        final String url = node(p);
+        final String url = configNode(p, p.deviceId());
         new Thread(() -> {
-            HttpURLConnection con = null;
-            String body = null;
-            boolean httpOk = false;
-            try {
-                con = (HttpURLConnection) new URL(url).openConnection();
-                con.setConnectTimeout(15000);
-                con.setReadTimeout(20000);
-                con.setRequestProperty("Accept", "application/json");
-                int code = con.getResponseCode();
-                httpOk = code >= 200 && code < 300;
-                if (httpOk) {
-                    StringBuilder sb = new StringBuilder();
-                    try (InputStream in = con.getInputStream();
-                         BufferedReader r = new BufferedReader(new InputStreamReader(in, "UTF-8"))) {
-                        String line;
-                        while ((line = r.readLine()) != null) sb.append(line);
-                    }
-                    body = sb.toString();
-                }
-            } catch (Throwable ignored) {
-            } finally {
-                if (con != null) try { con.disconnect(); } catch (Throwable ignored) { }
-            }
-            final String fbody = body;
-            final boolean fhttpOk = httpOk;
-            boolean hasData = fbody != null && fbody.trim().length() > 2 && !"null".equals(fbody.trim());
+            String[] r = read(url);               // r[0]=body أو null ، r[1]="ok"/"err"
+            final boolean httpOk = "ok".equals(r[1]);
+            final String body = r[0];
+            boolean hasData = body != null && body.trim().length() > 2 && !"null".equals(body.trim());
             boolean applied = false;
             if (hasData) {
                 try {
-                    org.json.JSONObject o = new org.json.JSONObject(fbody);
+                    org.json.JSONObject o = new org.json.JSONObject(body);
                     p.applyConfig(o);
                     p.setLastPull(System.currentTimeMillis());
                     applied = true;
@@ -168,12 +107,172 @@ public class RemoteSync {
                 } catch (Throwable ignored) { }
             }
             final boolean fapplied = applied;
-            final boolean fempty = fhttpOk && !hasData; // اتصل بنجاح لكن لا توجد إعدادات منشورة
+            final boolean fempty = httpOk && !hasData;
             if (showResult) ui.post(() -> Toast.makeText(c,
                     fapplied ? R.string.sync_pulled
                              : fempty ? R.string.sync_empty
                                       : R.string.sync_failed,
                     Toast.LENGTH_LONG).show());
         }).start();
+    }
+
+    private static void maybeRemoteUnlock(Context c, Prefs p, org.json.JSONObject o) {
+        try {
+            if (!p.isChild()) return;
+            long unlock = o.optLong("unlock", 0L);
+            if (unlock <= 0) return;
+            long now = System.currentTimeMillis();
+            if (unlock <= p.lastUnlockSeen()) return;
+            p.setLastUnlockSeen(unlock);
+            if (now - unlock > 15 * 60_000L) return;
+            c.startService(new Intent(c, MonitorService.class).setAction(MonitorService.ACTION_REMOTE_UNLOCK));
+        } catch (Throwable ignored) { }
+    }
+
+    // ===== جهاز ولي الأمر =====
+
+    /** ينشر الإعدادات الحالية إلى الجهاز المحدَّد. */
+    public static void publishToTarget(final Context c, final String targetId, final boolean showResult) {
+        final Prefs p = new Prefs(c);
+        final Handler ui = new Handler(Looper.getMainLooper());
+        if (targetId == null || targetId.isEmpty()) {
+            if (showResult) Toast.makeText(c, R.string.dev_pick_first, Toast.LENGTH_LONG).show();
+            return;
+        }
+        if (!p.syncConfigured()) {
+            if (showResult) Toast.makeText(c, R.string.sync_need_setup, Toast.LENGTH_LONG).show();
+            return;
+        }
+        final String url = configNode(p, targetId);
+        final String body = p.exportConfig().toString();
+        new Thread(() -> {
+            boolean ok = write(url, "PUT", body);
+            if (showResult) ui.post(() -> Toast.makeText(c,
+                    ok ? R.string.sync_published : R.string.sync_failed, Toast.LENGTH_LONG).show());
+        }).start();
+    }
+
+    /** يرسل أمر فتح قفل للجهاز المحدَّد فقط (تحديث حقل unlock دون المساس ببقية الإعداد). */
+    public static void unlockTarget(final Context c, final String targetId, final boolean showResult) {
+        final Prefs p = new Prefs(c);
+        final Handler ui = new Handler(Looper.getMainLooper());
+        if (targetId == null || targetId.isEmpty()) {
+            if (showResult) Toast.makeText(c, R.string.dev_pick_first, Toast.LENGTH_LONG).show();
+            return;
+        }
+        if (!p.syncConfigured()) return;
+        final String url = configNode(p, targetId);
+        final String body = "{\"unlock\":" + System.currentTimeMillis() + "}";
+        new Thread(() -> {
+            boolean ok = write(url, "PATCH", body);     // تحديث جزئي عبر override
+            if (showResult) ui.post(() -> Toast.makeText(c,
+                    ok ? R.string.remote_unlock_sent : R.string.sync_failed, Toast.LENGTH_LONG).show());
+        }).start();
+    }
+
+    /** يحضر إعداد الجهاز المحدَّد (لتعبئته في الحقول عند اختياره). */
+    public static void fetchTargetConfig(final Context c, final String targetId, final ConfigCallback cb) {
+        final Prefs p = new Prefs(c);
+        final Handler ui = new Handler(Looper.getMainLooper());
+        if (targetId == null || targetId.isEmpty() || !p.syncConfigured()) { ui.post(() -> cb.onResult(null, false)); return; }
+        final String url = configNode(p, targetId);
+        new Thread(() -> {
+            String[] r = read(url);
+            org.json.JSONObject o = null;
+            boolean ok = "ok".equals(r[1]);
+            if (ok && r[0] != null && r[0].trim().length() > 2 && !"null".equals(r[0].trim())) {
+                try { o = new org.json.JSONObject(r[0]); } catch (Throwable t) { o = null; }
+            }
+            final org.json.JSONObject fo = o;
+            final boolean fok = ok;
+            ui.post(() -> cb.onResult(fo, fok));
+        }).start();
+    }
+
+    /** يحضر قائمة أجهزة الأطفال المسجّلة. */
+    public static void listDevices(final Context c, final DevicesCallback cb) {
+        final Prefs p = new Prefs(c);
+        final Handler ui = new Handler(Looper.getMainLooper());
+        if (!p.syncConfigured()) { ui.post(() -> cb.onResult(new ArrayList<>(), false)); return; }
+        final String url = devicesRoot(p) + ".json";
+        new Thread(() -> {
+            String[] r = read(url);
+            boolean ok = "ok".equals(r[1]);
+            List<Device> out = new ArrayList<>();
+            if (ok && r[0] != null && r[0].trim().length() > 2 && !"null".equals(r[0].trim())) {
+                try {
+                    org.json.JSONObject root = new org.json.JSONObject(r[0]);
+                    java.util.Iterator<String> it = root.keys();
+                    while (it.hasNext()) {
+                        String id = it.next();
+                        org.json.JSONObject dev = root.optJSONObject(id);
+                        String name = id; long seen = 0L;
+                        if (dev != null) {
+                            org.json.JSONObject meta = dev.optJSONObject("meta");
+                            if (meta != null) {
+                                name = meta.optString("name", id);
+                                seen = meta.optLong("lastSeen", 0L);
+                            }
+                        }
+                        out.add(new Device(id, name, seen));
+                    }
+                } catch (Throwable ignored) { }
+            }
+            final boolean fok = ok;
+            ui.post(() -> cb.onResult(out, fok));
+        }).start();
+    }
+
+    // ===== HTTP منخفض المستوى =====
+
+    /** @return [body, "ok"|"err"] */
+    private static String[] read(String url) {
+        HttpURLConnection con = null;
+        try {
+            con = (HttpURLConnection) new URL(url).openConnection();
+            con.setConnectTimeout(15000);
+            con.setReadTimeout(20000);
+            con.setRequestProperty("Accept", "application/json");
+            int code = con.getResponseCode();
+            if (code < 200 || code >= 300) return new String[]{null, "err"};
+            StringBuilder sb = new StringBuilder();
+            try (InputStream in = con.getInputStream();
+                 BufferedReader r = new BufferedReader(new InputStreamReader(in, "UTF-8"))) {
+                String line;
+                while ((line = r.readLine()) != null) sb.append(line);
+            }
+            return new String[]{sb.toString(), "ok"};
+        } catch (Throwable t) {
+            return new String[]{null, "err"};
+        } finally {
+            if (con != null) try { con.disconnect(); } catch (Throwable ignored) { }
+        }
+    }
+
+    private static boolean write(String url, String method, String body) {
+        HttpURLConnection con = null;
+        try {
+            con = (HttpURLConnection) new URL(url).openConnection();
+            // HttpURLConnection لا يدعم PATCH مباشرة؛ نستخدم POST مع ترويسة override (يدعمها Firebase)
+            if ("PATCH".equals(method)) {
+                con.setRequestMethod("POST");
+                con.setRequestProperty("X-HTTP-Method-Override", "PATCH");
+            } else {
+                con.setRequestMethod(method);
+            }
+            con.setDoOutput(true);
+            con.setConnectTimeout(15000);
+            con.setReadTimeout(20000);
+            con.setRequestProperty("Content-Type", "application/json; charset=utf-8");
+            try (OutputStream os = con.getOutputStream()) {
+                os.write(body.getBytes("UTF-8"));
+            }
+            int code = con.getResponseCode();
+            return code >= 200 && code < 300;
+        } catch (Throwable t) {
+            return false;
+        } finally {
+            if (con != null) try { con.disconnect(); } catch (Throwable ignored) { }
+        }
     }
 }

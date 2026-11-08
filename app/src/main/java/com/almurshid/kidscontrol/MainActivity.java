@@ -65,7 +65,7 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         setupHome();
         showCrashIfAny();
-        if (prefs.isChild()) RemoteSync.pull(this, false); // جهاز الطفل: اسحب أحدث إعدادات عند الفتح
+        if (prefs.isChild()) { RemoteSync.registerDevice(this); RemoteSync.pull(this, false); } // الطفل: سجّل واسحب
         if (getIntent() != null && getIntent().getBooleanExtra("stop_request", false)) {
             getIntent().removeExtra("stop_request");
             tvHomeStatus.post(this::confirmStop);   // طلب الإيقاف من الإشعار
@@ -552,7 +552,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void save() {
         applySettingsToPrefs();
-        if (prefs.isParent()) RemoteSync.publish(this); // انشر الحدود الجديدة لأجهزة الأطفال
+        if (prefs.isParent()) RemoteSync.publishToTarget(this, prefs.targetId(), false); // انشر للجهاز المحدَّد
         if (prefs.enabled()) startMonitoring(); // تطبيق الإعدادات الجديدة فوراً
         // إغلاق التطبيق وإزالته من المهام حتى لا يجده الطفل مفتوحاً في الخلفية
         Toast.makeText(this, R.string.closing, Toast.LENGTH_SHORT).show();
@@ -777,6 +777,9 @@ public class MainActivity extends AppCompatActivity {
             applyRoleLock();
         });
 
+        final EditText etName = findViewById(R.id.et_device_name);
+        etName.setText(prefs.deviceName());
+
         findViewById(R.id.btn_gen_code).setOnClickListener(v -> {
             String code = genCode();
             etFam.setText(code);
@@ -784,35 +787,125 @@ public class MainActivity extends AppCompatActivity {
         });
 
         findViewById(R.id.btn_save_remote).setOnClickListener(v -> {
-            saveRemote(etUrl, etFam);
+            saveRemote(etUrl, etFam, etName);
             applyRoleLock();
-            if (prefs.isParent()) RemoteSync.publishWithResult(this); // انشر الحدود الحالية فوراً
-            else Toast.makeText(this, R.string.save_settings, Toast.LENGTH_SHORT).show();
-        });
-
-        findViewById(R.id.btn_publish).setOnClickListener(v -> {
-            saveRemote(etUrl, etFam);
-            RemoteSync.publishWithResult(this);
+            if (prefs.isChild()) {            // جهاز الطفل: سجّل نفسه واسحب إعداده
+                RemoteSync.registerDevice(this);
+                RemoteSync.pull(this, true);
+            } else {
+                Toast.makeText(this, R.string.save_settings, Toast.LENGTH_SHORT).show();
+            }
         });
 
         findViewById(R.id.btn_sync_now).setOnClickListener(v -> {
-            saveRemote(etUrl, etFam);
+            saveRemote(etUrl, etFam, etName);
             RemoteSync.pull(this, true);
         });
 
-        findViewById(R.id.btn_remote_unlock).setOnClickListener(v -> {
-            saveRemote(etUrl, etFam);
-            prefs.setRemoteUnlockTs(System.currentTimeMillis()); // أمر فتح جديد
-            RemoteSync.publish(this);                            // انشر الإعداد ومعه أمر الفتح
-            Toast.makeText(this, R.string.remote_unlock_sent, Toast.LENGTH_LONG).show();
+        findViewById(R.id.btn_refresh_devices).setOnClickListener(v -> {
+            saveRemote(etUrl, etFam, etName);
+            Toast.makeText(this, R.string.refresh_devices, Toast.LENGTH_SHORT).show();
+            RemoteSync.listDevices(this, (devices, ok) -> populateDevices(devices));
         });
 
+        findViewById(R.id.btn_publish).setOnClickListener(v ->
+                RemoteSync.publishToTarget(this, prefs.targetId(), true));
+
+        findViewById(R.id.btn_remote_unlock).setOnClickListener(v ->
+                RemoteSync.unlockTarget(this, prefs.targetId(), true));
+
+        updateTargetLabel();
         applyRoleLock();
     }
 
-    private void saveRemote(EditText etUrl, EditText etFam) {
+    private void saveRemote(EditText etUrl, EditText etFam, EditText etName) {
         prefs.setSyncUrl(etUrl.getText().toString());
         prefs.setFamilyCode(etFam.getText().toString());
+        prefs.setDeviceName(etName.getText().toString());
+    }
+
+    private void updateTargetLabel() {
+        TextView t = findViewById(R.id.tv_target);
+        if (t == null) return;
+        String id = prefs.targetId();
+        t.setText(id.isEmpty() ? "" : getString(R.string.dev_selected_fmt, id));
+    }
+
+    /** يبني صفوف قائمة الأجهزة (اسم + زرّا «ضبط» و«فتح»). */
+    private void populateDevices(java.util.List<RemoteSync.Device> devices) {
+        android.widget.LinearLayout box = findViewById(R.id.ll_devices);
+        if (box == null) return;
+        box.removeAllViews();
+        if (devices == null || devices.isEmpty()) {
+            TextView tv = new TextView(this);
+            tv.setText(R.string.dev_none);
+            tv.setTextColor(getResources().getColor(R.color.hint));
+            tv.setPadding(0, 12, 0, 12);
+            box.addView(tv);
+            return;
+        }
+        for (final RemoteSync.Device d : devices) {
+            android.widget.LinearLayout row = new android.widget.LinearLayout(this);
+            row.setOrientation(android.widget.LinearLayout.HORIZONTAL);
+            row.setGravity(android.view.Gravity.CENTER_VERTICAL);
+            row.setPadding(0, 10, 0, 10);
+
+            TextView name = new TextView(this);
+            name.setText(d.name);
+            name.setTextColor(getResources().getColor(R.color.text));
+            name.setTextSize(16f);
+            android.widget.LinearLayout.LayoutParams lp = new android.widget.LinearLayout.LayoutParams(
+                    0, android.view.ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+            row.addView(name, lp);
+
+            android.widget.Button bSet = new android.widget.Button(this);
+            bSet.setText(R.string.dev_configure);
+            bSet.setOnClickListener(v -> selectTarget(d));
+            row.addView(bSet);
+
+            android.widget.Button bUnlock = new android.widget.Button(this);
+            bUnlock.setText(R.string.dev_unlock);
+            bUnlock.setOnClickListener(v -> RemoteSync.unlockTarget(this, d.id, true));
+            row.addView(bUnlock);
+
+            box.addView(row);
+        }
+    }
+
+    /** اختيار جهاز للضبط: يحفظه كهدف، ويحمّل إعداده الحالي في الحقول. */
+    private void selectTarget(final RemoteSync.Device d) {
+        prefs.setTargetId(d.id);
+        updateTargetLabel();
+        RemoteSync.fetchTargetConfig(this, d.id, (config, ok) -> {
+            if (config != null) prefs.applyConfig(config);  // حمّل حدود هذا الجهاز
+            reloadFieldsFromPrefs();
+            Toast.makeText(this, getString(R.string.dev_loaded_fmt, d.name), Toast.LENGTH_LONG).show();
+        });
+    }
+
+    /** يعيد تحميل حقول الحدود من الإعدادات (بعد اختيار جهاز). */
+    private void reloadFieldsFromPrefs() {
+        if (etYt == null) return;
+        etYt.setText(String.valueOf(prefs.ytLimit()));
+        etGame.setText(String.valueOf(prefs.gameLimit()));
+        etCooldown.setText(String.valueOf(Math.max(1, prefs.cooldownSec() / 60)));
+        cbYt.setChecked(prefs.ytOn());
+        cbGame.setChecked(prefs.gameOn());
+        cbSchedule.setChecked(prefs.schedOn());
+        schedFrom = prefs.schedFrom(); schedTo = prefs.schedTo(); updateSchedButtons();
+        cbNight.setChecked(prefs.nightOn());
+        nightFrom = prefs.nightFrom(); nightTo = prefs.nightTo(); updateNightButtons();
+        etNightLimit.setText(String.valueOf(prefs.nightLimit()));
+        etBreakThreshold.setText(String.valueOf(prefs.breakThreshold()));
+        etBreakMinutes.setText(String.valueOf(prefs.breakMinutes()));
+        etResume.setText(String.valueOf(prefs.resumeMinutes()));
+        cbRelax.setChecked(prefs.relaxOn());
+        etRelaxLimit.setText(String.valueOf(prefs.relaxLimit()));
+        relaxDays = prefs.relaxDays();
+        cbExcludeFb.setChecked(prefs.excludeFb());
+        cbExcludeIg.setChecked(prefs.excludeIg());
+        cbRevert.setChecked(prefs.revertOn());
+        etRevert.setText(String.valueOf(prefs.revertMinutes()));
     }
 
     private static String genCode() {
@@ -837,10 +930,11 @@ public class MainActivity extends AppCompatActivity {
         View notice = findViewById(R.id.tv_child_notice);
         if (notice != null) notice.setVisibility(child ? View.VISIBLE : View.GONE);
         // «نشر» و«فتح القفل» إجراءات ولي الأمر فقط
-        Button pub = findViewById(R.id.btn_publish);
-        if (pub != null) pub.setVisibility(child ? View.GONE : View.VISIBLE);
-        Button runlock = findViewById(R.id.btn_remote_unlock);
-        if (runlock != null) runlock.setVisibility(child ? View.GONE : View.VISIBLE);
+        int[] parentOnly = {
+                R.id.btn_publish, R.id.btn_remote_unlock, R.id.btn_refresh_devices,
+                R.id.ll_devices, R.id.tv_devices_hint, R.id.tv_target
+        };
+        for (int id : parentOnly) { View pv = findViewById(id); if (pv != null) pv.setVisibility(child ? View.GONE : View.VISIBLE); }
         // أزرار الإيقاف/الإغلاق في الشاشة الرئيسية تُخفى على جهاز الطفل
         applyHomeRoleLock(child);
     }

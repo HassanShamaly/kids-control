@@ -315,6 +315,23 @@ public class Prefs {
     // أمر الفتح عن بُعد: ولي الأمر يضبط طابعاً زمنياً جديداً؛ الطفل ينفّذه مرة واحدة إن كان حديثاً
     private static final String K_UNLOCK_CMD = "remote_unlock_ts";   // على جهاز ولي الأمر
     private static final String K_UNLOCK_SEEN = "remote_unlock_seen"; // على جهاز الطفل
+    // تعريف الجهاز (لتخصيص إعداد مستقل لكل جوال)
+    private static final String K_DEVICE_ID = "device_id";
+    private static final String K_DEVICE_NAME = "device_name";
+    private static final String K_TARGET_ID = "target_device_id"; // على جهاز ولي الأمر: الجهاز المحدَّد للضبط
+    public String deviceId() {
+        String id = sp.getString(K_DEVICE_ID, null);
+        if (id == null || id.isEmpty()) {
+            id = java.util.UUID.randomUUID().toString().replace("-", "").substring(0, 16);
+            sp.edit().putString(K_DEVICE_ID, id).apply();
+        }
+        return id;
+    }
+    public String deviceName()          { return sp.getString(K_DEVICE_NAME, ""); }
+    public void setDeviceName(String v)  { sp.edit().putString(K_DEVICE_NAME, v == null ? "" : v.trim()).apply(); }
+    public String targetId()            { return sp.getString(K_TARGET_ID, ""); }
+    public void setTargetId(String v)    { sp.edit().putString(K_TARGET_ID, v == null ? "" : v).apply(); }
+
     public long remoteUnlockTs()        { return sp.getLong(K_UNLOCK_CMD, 0L); }
     public void setRemoteUnlockTs(long v){ sp.edit().putLong(K_UNLOCK_CMD, v).apply(); }
     public long lastUnlockSeen()        { return sp.getLong(K_UNLOCK_SEEN, 0L); }
@@ -336,7 +353,6 @@ public class Prefs {
             o.put("revert_on", revertOn()); o.put("revert_min", revertMinutes());
             o.put("exc_fb", excludeFb());   o.put("exc_ig", excludeIg());
             o.put("allowed", new org.json.JSONArray(getSet(K_ALLOWED)));
-            o.put("unlock", remoteUnlockTs());   // أمر فتح القفل عن بُعد
             o.put("rev", System.currentTimeMillis());
         } catch (Exception ignored) { }
         return o;

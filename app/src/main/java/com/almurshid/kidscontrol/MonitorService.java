@@ -631,8 +631,10 @@ public class MonitorService extends Service {
                 : getString(R.string.lock_games));
         android.widget.Button bu = overlay.findViewById(R.id.btn_unlock);
         View sub = overlay.findViewById(R.id.lock_sub);
-        // لا مخرج طوارئ محلي: فكّ القفل عند الطوارئ يكون من جوال ولي الأمر عن بُعد
-        if (onBreak) {
+        // على جهاز الطفل لا مخرج محلي أثناء الاستراحة (الطوارئ من جوال ولي الأمر).
+        // على جهازك (ولي الأمر/غير مُدار) يبقى زر الفتح متاحاً دائماً ببصمتك.
+        boolean childDevice = prefs.isChild();
+        if (onBreak && childDevice) {
             // أثناء الاستراحة: عدّاد فقط بلا زر، ليظن الطفل ألا حلّ. الطوارئ بالإيماءة السرّية.
             bu.setVisibility(View.GONE);
             if (sub != null) ((TextView) sub).setText(R.string.break_sub);

@@ -141,16 +141,37 @@
                         <Button android:id="@+id/btn_save_remote" style="@style/Secondary" android:text="@string/save_remote" />
                         <Button android:id="@+id/btn_sync_now" style="@style/Secondary" android:text="@string/sync_now" />
 
-                        <!-- قائمة الأجهزة (جهاز ولي الأمر) -->
-                        <View style="@style/Divider" />
-                        <TextView android:id="@+id/tv_devices_hint" style="@style/Hint" android:text="@string/devices_hint" />
-                        <Button android:id="@+id/btn_refresh_devices" style="@style/Secondary" android:text="@string/refresh_devices" />
-                        <LinearLayout android:id="@+id/ll_devices"
+                        <!-- لوحة ولي الأمر: اختر جهازاً ثم اضبط وأرسِل دون الخروج -->
+                        <LinearLayout android:id="@+id/parent_panel"
                             android:layout_width="match_parent" android:layout_height="wrap_content"
-                            android:orientation="vertical" />
-                        <TextView android:id="@+id/tv_target" style="@style/Status" />
-                        <Button android:id="@+id/btn_publish" style="@style/Primary" android:text="@string/publish_target" />
-                        <Button android:id="@+id/btn_remote_unlock" style="@style/Danger" android:text="@string/remote_unlock" />
+                            android:orientation="vertical">
+                            <View style="@style/Divider" />
+                            <TextView android:id="@+id/tv_devices_hint" style="@style/Hint" android:text="@string/devices_hint" />
+                            <Button android:id="@+id/btn_refresh_devices" style="@style/Secondary" android:text="@string/refresh_devices" />
+                            <Spinner android:id="@+id/sp_devices"
+                                android:layout_width="match_parent" android:layout_height="wrap_content"
+                                android:minHeight="52dp" android:background="@drawable/field_bg"
+                                android:paddingStart="14dp" android:paddingEnd="14dp" android:layout_marginTop="8dp" />
+                            <TextView android:id="@+id/tv_target" style="@style/Status" />
+
+                            <TextView style="@style/FieldLabel" android:text="@string/presets_label" />
+                            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                                android:orientation="horizontal" android:layout_marginTop="4dp">
+                                <Button android:id="@+id/btn_p1" style="@style/Secondary"
+                                    android:layout_width="0dp" android:layout_weight="1" android:text="@string/preset_1" />
+                                <Button android:id="@+id/btn_p10" style="@style/Secondary"
+                                    android:layout_width="0dp" android:layout_weight="1" android:text="@string/preset_10" />
+                                <Button android:id="@+id/btn_p30" style="@style/Secondary"
+                                    android:layout_width="0dp" android:layout_weight="1" android:text="@string/preset_30" />
+                            </LinearLayout>
+                            <TextView style="@style/FieldLabel" android:text="@string/quota_label" android:paddingTop="8dp" />
+                            <EditText android:id="@+id/et_quota" style="@style/Num" android:inputType="number" android:hint="30" />
+                            <CheckBox android:id="@+id/cb_q_fb" style="@style/Check" android:text="@string/exclude_fb" />
+                            <CheckBox android:id="@+id/cb_q_ig" style="@style/Check" android:text="@string/exclude_ig" />
+
+                            <Button android:id="@+id/btn_publish" style="@style/Primary" android:text="@string/save_send" />
+                            <Button android:id="@+id/btn_remote_unlock" style="@style/Danger" android:text="@string/remote_unlock" />
+                        </LinearLayout>
                         <TextView android:id="@+id/tv_sync_status" style="@style/Status" />
                     </LinearLayout>
                 </androidx.cardview.widget.CardView>

@@ -805,17 +805,69 @@ public class MainActivity extends AppCompatActivity {
         findViewById(R.id.btn_refresh_devices).setOnClickListener(v -> {
             saveRemote(etUrl, etFam, etName);
             Toast.makeText(this, R.string.refresh_devices, Toast.LENGTH_SHORT).show();
-            RemoteSync.listDevices(this, (devices, ok) -> populateDevices(devices));
+            RemoteSync.listDevices(this, (devices, ok) -> fillSpinner(devices));
         });
 
-        findViewById(R.id.btn_publish).setOnClickListener(v ->
-                RemoteSync.publishToTarget(this, prefs.targetId(), true));
+        // قائمة منسدلة لاختيار الجهاز
+        final android.widget.Spinner sp = findViewById(R.id.sp_devices);
+        sp.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+            @Override public void onItemSelected(android.widget.AdapterView<?> parent, View view, int pos, long id) {
+                if (mDevices != null && pos >= 0 && pos < mDevices.size()) selectTarget(mDevices.get(pos));
+            }
+            @Override public void onNothingSelected(android.widget.AdapterView<?> parent) { }
+        });
+
+        // الباقات الجاهزة
+        final EditText etQuota = findViewById(R.id.et_quota);
+        findViewById(R.id.btn_p1).setOnClickListener(v -> etQuota.setText("1"));
+        findViewById(R.id.btn_p10).setOnClickListener(v -> etQuota.setText("10"));
+        findViewById(R.id.btn_p30).setOnClickListener(v -> etQuota.setText("30"));
+
+        // حفظ وإرسال للجهاز المحدَّد (دون الخروج)
+        findViewById(R.id.btn_publish).setOnClickListener(v -> saveAndSend());
 
         findViewById(R.id.btn_remote_unlock).setOnClickListener(v ->
                 RemoteSync.unlockTarget(this, prefs.targetId(), true));
 
         updateTargetLabel();
         applyRoleLock();
+    }
+
+    private java.util.List<RemoteSync.Device> mDevices = new java.util.ArrayList<>();
+
+    /** يملأ القائمة المنسدلة بأسماء الأجهزة المسجّلة. */
+    private void fillSpinner(java.util.List<RemoteSync.Device> devices) {
+        android.widget.Spinner sp = findViewById(R.id.sp_devices);
+        if (sp == null) return;
+        mDevices = devices != null ? devices : new java.util.ArrayList<>();
+        java.util.List<String> names = new java.util.ArrayList<>();
+        if (mDevices.isEmpty()) {
+            names.add(getString(R.string.dev_none));
+        } else {
+            for (RemoteSync.Device d : mDevices) names.add(d.name);
+        }
+        android.widget.ArrayAdapter<String> ad = new android.widget.ArrayAdapter<>(
+                this, android.R.layout.simple_spinner_item, names);
+        ad.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        sp.setAdapter(ad);
+    }
+
+    /** يطبّق الباقة/الأرقام الحالية وينشرها للجهاز المحدَّد، مع البقاء في الإعدادات. */
+    private void saveAndSend() {
+        String id = prefs.targetId();
+        if (id == null || id.isEmpty()) {
+            Toast.makeText(this, R.string.dev_pick_first, Toast.LENGTH_LONG).show();
+            return;
+        }
+        EditText etQuota = findViewById(R.id.et_quota);
+        int q = Math.max(1, parseInt(etQuota.getText().toString(), 30));
+        prefs.setYtLimit(q);
+        prefs.setGameLimit(q);
+        prefs.setYtOn(true);
+        prefs.setGameOn(true);
+        prefs.setExcludeFb(((CheckBox) findViewById(R.id.cb_q_fb)).isChecked());
+        prefs.setExcludeIg(((CheckBox) findViewById(R.id.cb_q_ig)).isChecked());
+        RemoteSync.publishToTarget(this, id, true);   // يعرض نتيجة ولا يغلق الإعدادات
     }
 
     private void saveRemote(EditText etUrl, EditText etFam, EditText etName) {
@@ -831,47 +883,6 @@ public class MainActivity extends AppCompatActivity {
         t.setText(id.isEmpty() ? "" : getString(R.string.dev_selected_fmt, id));
     }
 
-    /** يبني صفوف قائمة الأجهزة (اسم + زرّا «ضبط» و«فتح»). */
-    private void populateDevices(java.util.List<RemoteSync.Device> devices) {
-        android.widget.LinearLayout box = findViewById(R.id.ll_devices);
-        if (box == null) return;
-        box.removeAllViews();
-        if (devices == null || devices.isEmpty()) {
-            TextView tv = new TextView(this);
-            tv.setText(R.string.dev_none);
-            tv.setTextColor(getResources().getColor(R.color.hint));
-            tv.setPadding(0, 12, 0, 12);
-            box.addView(tv);
-            return;
-        }
-        for (final RemoteSync.Device d : devices) {
-            android.widget.LinearLayout row = new android.widget.LinearLayout(this);
-            row.setOrientation(android.widget.LinearLayout.HORIZONTAL);
-            row.setGravity(android.view.Gravity.CENTER_VERTICAL);
-            row.setPadding(0, 10, 0, 10);
-
-            TextView name = new TextView(this);
-            name.setText(d.name);
-            name.setTextColor(getResources().getColor(R.color.text));
-            name.setTextSize(16f);
-            android.widget.LinearLayout.LayoutParams lp = new android.widget.LinearLayout.LayoutParams(
-                    0, android.view.ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
-            row.addView(name, lp);
-
-            android.widget.Button bSet = new android.widget.Button(this);
-            bSet.setText(R.string.dev_configure);
-            bSet.setOnClickListener(v -> selectTarget(d));
-            row.addView(bSet);
-
-            android.widget.Button bUnlock = new android.widget.Button(this);
-            bUnlock.setText(R.string.dev_unlock);
-            bUnlock.setOnClickListener(v -> RemoteSync.unlockTarget(this, d.id, true));
-            row.addView(bUnlock);
-
-            box.addView(row);
-        }
-    }
-
     /** اختيار جهاز للضبط: يحفظه كهدف، ويحمّل إعداده الحالي في الحقول. */
     private void selectTarget(final RemoteSync.Device d) {
         prefs.setTargetId(d.id);
@@ -879,8 +890,19 @@ public class MainActivity extends AppCompatActivity {
         RemoteSync.fetchTargetConfig(this, d.id, (config, ok) -> {
             if (config != null) prefs.applyConfig(config);  // حمّل حدود هذا الجهاز
             reloadFieldsFromPrefs();
+            loadQuotaPanel();
             Toast.makeText(this, getString(R.string.dev_loaded_fmt, d.name), Toast.LENGTH_LONG).show();
         });
+    }
+
+    /** يملأ لوحة الباقة السريعة (المدة + الاستثناءات) من الإعدادات المحمّلة. */
+    private void loadQuotaPanel() {
+        EditText etQuota = findViewById(R.id.et_quota);
+        if (etQuota != null) etQuota.setText(String.valueOf(Math.max(prefs.ytLimit(), prefs.gameLimit())));
+        CheckBox fb = findViewById(R.id.cb_q_fb);
+        CheckBox ig = findViewById(R.id.cb_q_ig);
+        if (fb != null) fb.setChecked(prefs.excludeFb());
+        if (ig != null) ig.setChecked(prefs.excludeIg());
     }
 
     /** يعيد تحميل حقول الحدود من الإعدادات (بعد اختيار جهاز). */
@@ -930,11 +952,8 @@ public class MainActivity extends AppCompatActivity {
         View notice = findViewById(R.id.tv_child_notice);
         if (notice != null) notice.setVisibility(child ? View.VISIBLE : View.GONE);
         // «نشر» و«فتح القفل» إجراءات ولي الأمر فقط
-        int[] parentOnly = {
-                R.id.btn_publish, R.id.btn_remote_unlock, R.id.btn_refresh_devices,
-                R.id.ll_devices, R.id.tv_devices_hint, R.id.tv_target
-        };
-        for (int id : parentOnly) { View pv = findViewById(id); if (pv != null) pv.setVisibility(child ? View.GONE : View.VISIBLE); }
+        View panel = findViewById(R.id.parent_panel);   // كل أدوات ولي الأمر في حاوية واحدة
+        if (panel != null) panel.setVisibility(child ? View.GONE : View.VISIBLE);
         // أزرار الإيقاف/الإغلاق في الشاشة الرئيسية تُخفى على جهاز الطفل
         applyHomeRoleLock(child);
     }

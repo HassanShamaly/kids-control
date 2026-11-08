@@ -155,6 +155,13 @@
     <string name="dev_selected_fmt">الجهاز المحدَّد: %1$s</string>
     <string name="dev_loaded_fmt">تم تحميل إعدادات «%1$s» — عدّل الحدود ثم اضغط حفظ</string>
     <string name="publish_target">نشر الحدود إلى الجهاز المحدَّد</string>
+    <string name="save_send">حفظ وإرسال للجهاز المحدَّد</string>
+    <string name="presets_label">باقات جاهزة (تضبط المدة):</string>
+    <string name="preset_1">دقيقة</string>
+    <string name="preset_10">10 دقائق</string>
+    <string name="preset_30">30 دقيقة</string>
+    <string name="quota_label">المدة لهذا الجهاز (دقائق) — فيديو وألعاب معاً</string>
+    <string name="pick_device_prompt">— اختر جهازاً —</string>
     <string name="child_locked_notice">هذا الجهاز يُدار عن بُعد من جهاز ولي الأمر. تُضبط الحدود من جواله، ولا يمكن تعديلها هنا.</string>
     <string name="show_advanced">عرض الإعدادات المتقدمة</string>
     <string name="sec_limits">المدد</string>

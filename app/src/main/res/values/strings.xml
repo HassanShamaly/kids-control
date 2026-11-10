@@ -164,11 +164,11 @@
     <string name="pick_device_prompt">— اختر جهازاً —</string>
     <string name="child_locked_notice">هذا الجهاز يُدار عن بُعد من جهاز ولي الأمر. تُضبط الحدود من جواله، ولا يمكن تعديلها هنا.</string>
     <string name="show_advanced">عرض الإعدادات المتقدمة</string>
-    <string name="sec_limits">المدد</string>
-    <string name="sec_exclude">الاستثناءات</string>
-    <string name="sec_times">الأوقات</string>
-    <string name="sec_break">الاستراحة الإجبارية</string>
-    <string name="sec_auto">الإيقاف المؤقت والافتراضي</string>
+    <string name="sec_limits">٢) المدد</string>
+    <string name="sec_exclude">٣) الاستثناءات</string>
+    <string name="sec_times">٤) القيود: الأوقات والأيام</string>
+    <string name="sec_break">٥) القيود: الاستراحة الإجبارية</string>
+    <string name="sec_auto">٦) الاستئناف التلقائي</string>
     <string name="sec_run">التشغيل</string>
     <string name="sec_bank">وضع البنوك</string>
     <string name="bank_hint">تطبيقات البنوك (مثل إنستا باي) ترفض العمل إذا كانت خدمة الحماية مفعّلة. أوقفها مؤقتاً لاستخدام تطبيق البنك، ثم أعد تفعيلها. حدود الوقت والقفل تبقى تعمل أثناء ذلك.</string>
@@ -261,4 +261,30 @@
     <string name="default_saved">تم حفظ الإعداد الافتراضي</string>
     <string name="default_status_set">يوجد إعداد افتراضي محفوظ ✓</string>
     <string name="default_status_none">لا يوجد إعداد افتراضي محفوظ بعد</string>
+    <string name="settings_flow_hint">١) اختر الجهاز ونوع الإعداد  ٢-٦) عدّل المجموعات  ٧) اضغط «حفظ وإرسال». يمكنك ضبط عدة أجهزة دون الخروج.</string>
+    <string name="target_title">١) الجهاز المستهدف</string>
+    <string name="target_this_phone">📱 هذا الجهاز (جوالي)</string>
+    <string name="type_label">نوع الإعداد</string>
+    <string name="type_default">افتراضي — يبقى دائماً</string>
+    <string name="type_instant">لحظي — يُطبَّق الآن بوقت جديد، ثم يعود للافتراضي</string>
+    <string name="instant_dur_label">مدة الإعداد اللحظي (دقائق)</string>
+    <string name="save_send_target">٧) حفظ وإرسال للجهاز المحدَّد</string>
+    <string name="remote_unlock_target">فتح قفل الجهاز المحدَّد الآن (طوارئ)</string>
+    <string name="close_settings">إغلاق الإعدادات</string>
+    <string name="device_setup_hint">إعدادات هذا الجهاز نفسه (الدور، الرمز، الصلاحيات، الحماية):</string>
+    <string name="saved_local">تم الحفظ والتطبيق على هذا الجهاز ✓</string>
+    <string name="saved_local_instant">تم تطبيق الإعداد اللحظي على هذا الجهاز ✓</string>
+    <string name="instant_sent">تم إرسال الإعداد اللحظي ✓ — يُطبَّق خلال دقيقة</string>
+    <string name="default_sent">تم إرسال الإعداد الافتراضي ✓ — يُطبَّق خلال دقيقة</string>
+    <string name="loading_target">جارٍ تحميل إعدادات الجهاز…</string>
+    <string name="target_loaded_fmt">تم تحميل إعدادات «%1$s»</string>
+    <string name="seen_now">متصل الآن</string>
+    <string name="seen_min_fmt">آخر اتصال قبل %1$d دقيقة</string>
+    <string name="seen_hour_fmt">آخر اتصال قبل %1$d ساعة</string>
+    <string name="seen_day_fmt">⚠ آخر اتصال قبل %1$d يوم</string>
+    <string name="seen_never">⚠ لم يتصل بعد</string>
+    <string name="target_status_this">تعدّل إعدادات جوالك أنت. التغيير يُطبَّق عند الضغط على «حفظ وإرسال».</string>
+    <string name="target_status_instant_active">⏳ على هذا الجهاز إعداد لحظي سارٍ حتى %1$s</string>
+    <string name="target_no_sync">لربط أجهزة أخرى: اضبط «التحكّم عن بُعد» بالأسفل (الدور=ولي الأمر + الرمز).</string>
+    <string name="preset_applied_fmt">باقة %1$d دقيقة — اضغط «حفظ وإرسال» لتطبيقها</string>
 </resources>

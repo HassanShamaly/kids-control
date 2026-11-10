@@ -100,7 +100,25 @@ public class RemoteSync {
             if (hasData) {
                 try {
                     org.json.JSONObject o = new org.json.JSONObject(body);
-                    p.applyConfig(o);
+                    // ١) الافتراضي: يُطبَّق فقط عند صدور نسخة جديدة منه (حتى لا يمحو اللحظي كل دقيقة)
+                    long rev = o.optLong("rev", 0L);
+                    if (rev != 0L && rev != p.lastDefaultRev()) {
+                        org.json.JSONObject def = new org.json.JSONObject(o.toString());
+                        def.remove("instant");
+                        def.remove("unlock");
+                        ConfigApplier.applyDefault(p, def);
+                        p.setLastDefaultRev(rev);
+                    }
+                    // ٢) اللحظي: يُنفَّذ مرة واحدة لكل أمر جديد، ضمن مدته
+                    org.json.JSONObject ins = o.optJSONObject("instant");
+                    if (ins != null && p.isChild()) {
+                        long ts = ins.optLong("ts", 0L);
+                        if (ts > 0 && ts != p.lastInstantSeen()) {
+                            p.setLastInstantSeen(ts);
+                            long until = ts + Math.max(1, ins.optInt("dur", 60)) * 60_000L;
+                            ConfigApplier.applyInstant(c, p, ins, until, true);
+                        }
+                    }
                     p.setLastPull(System.currentTimeMillis());
                     applied = true;
                     maybeRemoteUnlock(c, p, o);
@@ -171,7 +189,43 @@ public class RemoteSync {
         new Thread(() -> {
             boolean ok = write(url, "PUT", body);
             if (showResult) ui.post(() -> Toast.makeText(c,
-                    ok ? R.string.sync_published : R.string.sync_failed, Toast.LENGTH_LONG).show());
+                    ok ? R.string.default_sent : R.string.sync_failed, Toast.LENGTH_LONG).show());
+        }).start();
+    }
+
+    /**
+     * يرسل إعداداً «لحظياً» للجهاز المحدَّد: يُضاف كحقل instant دون المساس بالإعداد الافتراضي.
+     * يطبّقه الطفل الآن بجلسة وقت جديدة، ثم يعود إلى الافتراضي بعد durMin دقيقة.
+     */
+    public static void sendInstant(final Context c, final String targetId,
+                                   final org.json.JSONObject cfg, final int durMin, final boolean showResult) {
+        final Prefs p = new Prefs(c);
+        final Handler ui = new Handler(Looper.getMainLooper());
+        if (targetId == null || targetId.isEmpty()) {
+            if (showResult) Toast.makeText(c, R.string.dev_pick_first, Toast.LENGTH_LONG).show();
+            return;
+        }
+        if (!p.syncConfigured()) {
+            if (showResult) Toast.makeText(c, R.string.sync_need_setup, Toast.LENGTH_LONG).show();
+            return;
+        }
+        String b;
+        try {
+            org.json.JSONObject ins = new org.json.JSONObject(cfg.toString());
+            ins.remove("instant");
+            ins.remove("rev");
+            ins.put("ts", System.currentTimeMillis());
+            ins.put("dur", Math.max(1, durMin));
+            org.json.JSONObject wrap = new org.json.JSONObject();
+            wrap.put("instant", ins);
+            b = wrap.toString();
+        } catch (Throwable t) { return; }
+        final String body = b;
+        final String url = configNode(p, targetId);
+        new Thread(() -> {
+            boolean ok = write(url, "PATCH", body);
+            if (showResult) ui.post(() -> Toast.makeText(c,
+                    ok ? R.string.instant_sent : R.string.sync_failed, Toast.LENGTH_LONG).show());
         }).start();
     }
 

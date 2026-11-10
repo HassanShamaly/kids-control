@@ -90,6 +90,31 @@ public class Prefs {
         sp = c.getApplicationContext().getSharedPreferences(FILE, Context.MODE_PRIVATE);
     }
 
+    /** نسخة على ملف آخر (تُستخدم كمسودّة تحرير لا تمسّ إعدادات هذا الجهاز الفعلية). */
+    private Prefs(Context c, String file) {
+        sp = c.getApplicationContext().getSharedPreferences(file, Context.MODE_PRIVATE);
+    }
+
+    /** مسودّة تحرير إعدادات الجهاز المستهدف في شاشة الإعدادات. */
+    public static Prefs draft(Context c) { return new Prefs(c, "kc_edit_draft"); }
+
+    /** يمسح كل القيم (للمسودّة فقط). */
+    public void clearAll() { sp.edit().clear().apply(); }
+
+    // ===== الإعداد الافتراضي/اللحظي (القادم من جهاز ولي الأمر أو المطبَّق محلياً) =====
+    private static final String K_BASE_CFG      = "base_cfg_json";     // الإعداد الافتراضي الأساسي
+    private static final String K_INSTANT_UNTIL = "instant_until";     // نهاية الإعداد اللحظي
+    private static final String K_LAST_DEF_REV  = "last_default_rev";  // آخر إصدار افتراضي طُبّق
+    private static final String K_LAST_INSTANT  = "last_instant_seen"; // آخر أمر لحظي نُفّذ
+    public String baseConfigJson()          { return sp.getString(K_BASE_CFG, ""); }
+    public void setBaseConfigJson(String v) { sp.edit().putString(K_BASE_CFG, v == null ? "" : v).apply(); }
+    public long instantUntil()              { return sp.getLong(K_INSTANT_UNTIL, 0L); }
+    public void setInstantUntil(long v)     { sp.edit().putLong(K_INSTANT_UNTIL, v).apply(); }
+    public long lastDefaultRev()            { return sp.getLong(K_LAST_DEF_REV, 0L); }
+    public void setLastDefaultRev(long v)   { sp.edit().putLong(K_LAST_DEF_REV, v).apply(); }
+    public long lastInstantSeen()           { return sp.getLong(K_LAST_INSTANT, 0L); }
+    public void setLastInstantSeen(long v)  { sp.edit().putLong(K_LAST_INSTANT, v).apply(); }
+
     public int ytLimit()     { return sp.getInt(K_YT_LIMIT, 30); }
     public int gameLimit()   { return sp.getInt(K_GAME_LIMIT, 30); }
     public boolean ytOn()    { return sp.getBoolean(K_YT_ON, true); }

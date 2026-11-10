@@ -236,6 +236,8 @@ public class MonitorService extends Service {
 
         // جهاز الطفل: اسحب إعدادات ولي الأمر دورياً وطبّقها
         RemoteSync.pullIfDue(this, 60_000L);
+        // انتهاء الإعداد اللحظي ← العودة للإعداد الافتراضي
+        ConfigApplier.checkInstantExpiry(prefs, now);
 
         // المراقبة متوقفة: عُد تلقائياً عند حلول الموعد، وإلا اعرض إشعار الحالة
         if (!prefs.enabled()) {

@@ -97,7 +97,7 @@
                 android:gravity="center"
                 android:paddingBottom="6dp" />
 
-            <TextView style="@style/Hint" android:text="@string/settings_accordion_hint" />
+            <TextView style="@style/Hint" android:text="@string/settings_flow_hint" />
 
             <!-- إشعار جهاز الطفل (يظهر عندما يكون الدور = طفل) -->
             <TextView android:id="@+id/tv_child_notice"
@@ -113,69 +113,32 @@
                 android:layout_marginTop="8dp"
                 android:layout_marginBottom="4dp" />
 
-            <!-- ===== التحكّم عن بُعد ===== -->
-            <Button android:id="@+id/hdr_remote" style="@style/GroupHeader" android:text="@string/sec_remote" />
-            <LinearLayout android:id="@+id/box_remote" android:layout_width="match_parent"
-                android:layout_height="wrap_content" android:orientation="vertical" android:visibility="gone">
-                <androidx.cardview.widget.CardView style="@style/Card">
-                    <LinearLayout style="@style/CardInner">
-                        <TextView style="@style/Hint" android:text="@string/remote_hint" />
-                        <RadioGroup android:id="@+id/rg_role"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:orientation="vertical"
-                            android:paddingTop="6dp" android:paddingBottom="6dp">
-                            <RadioButton android:id="@+id/rb_parent" style="@style/Check" android:text="@string/role_parent" />
-                            <RadioButton android:id="@+id/rb_child" style="@style/Check" android:text="@string/role_child" />
-                        </RadioGroup>
-                        <TextView style="@style/FieldLabel" android:text="@string/sync_url_label" />
-                        <EditText android:id="@+id/et_sync_url" style="@style/Num"
-                            android:inputType="textUri" android:hint="https://xxxx.firebaseio.com" />
-                        <TextView style="@style/FieldLabel" android:text="@string/family_label" android:paddingTop="10dp" />
-                        <EditText android:id="@+id/et_family" style="@style/Num"
-                            android:inputType="textVisiblePassword" />
-                        <Button android:id="@+id/btn_gen_code" style="@style/Secondary" android:text="@string/gen_code" />
-                        <TextView style="@style/FieldLabel" android:text="@string/device_name_label" android:paddingTop="10dp" />
-                        <EditText android:id="@+id/et_device_name" style="@style/Num"
-                            android:inputType="textPersonName" />
-                        <Button android:id="@+id/btn_save_remote" style="@style/Secondary" android:text="@string/save_remote" />
-                        <Button android:id="@+id/btn_sync_now" style="@style/Secondary" android:text="@string/sync_now" />
-
-                        <!-- لوحة ولي الأمر: اختر جهازاً ثم اضبط وأرسِل دون الخروج -->
-                        <LinearLayout android:id="@+id/parent_panel"
-                            android:layout_width="match_parent" android:layout_height="wrap_content"
-                            android:orientation="vertical">
-                            <View style="@style/Divider" />
-                            <TextView android:id="@+id/tv_devices_hint" style="@style/Hint" android:text="@string/devices_hint" />
-                            <Button android:id="@+id/btn_refresh_devices" style="@style/Secondary" android:text="@string/refresh_devices" />
-                            <Spinner android:id="@+id/sp_devices"
-                                android:layout_width="match_parent" android:layout_height="wrap_content"
-                                android:minHeight="52dp" android:background="@drawable/field_bg"
-                                android:paddingStart="14dp" android:paddingEnd="14dp" android:layout_marginTop="8dp" />
-                            <TextView android:id="@+id/tv_target" style="@style/Status" />
-
-                            <TextView style="@style/FieldLabel" android:text="@string/presets_label" />
-                            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-                                android:orientation="horizontal" android:layout_marginTop="4dp">
-                                <Button android:id="@+id/btn_p1" style="@style/Secondary"
-                                    android:layout_width="0dp" android:layout_weight="1" android:text="@string/preset_1" />
-                                <Button android:id="@+id/btn_p10" style="@style/Secondary"
-                                    android:layout_width="0dp" android:layout_weight="1" android:text="@string/preset_10" />
-                                <Button android:id="@+id/btn_p30" style="@style/Secondary"
-                                    android:layout_width="0dp" android:layout_weight="1" android:text="@string/preset_30" />
-                            </LinearLayout>
-                            <TextView style="@style/FieldLabel" android:text="@string/quota_label" android:paddingTop="8dp" />
-                            <EditText android:id="@+id/et_quota" style="@style/Num" android:inputType="number" android:hint="30" />
-                            <CheckBox android:id="@+id/cb_q_fb" style="@style/Check" android:text="@string/exclude_fb" />
-                            <CheckBox android:id="@+id/cb_q_ig" style="@style/Check" android:text="@string/exclude_ig" />
-
-                            <Button android:id="@+id/btn_publish" style="@style/Primary" android:text="@string/save_send" />
-                            <Button android:id="@+id/btn_remote_unlock" style="@style/Danger" android:text="@string/remote_unlock" />
-                        </LinearLayout>
-                        <TextView android:id="@+id/tv_sync_status" style="@style/Status" />
+            <!-- ===== ١) الجهاز المستهدف ونوع الإعداد ===== -->
+            <androidx.cardview.widget.CardView android:id="@+id/target_bar" style="@style/Card">
+                <LinearLayout style="@style/CardInner">
+                    <TextView style="@style/FieldLabel" android:text="@string/target_title" />
+                    <Spinner android:id="@+id/sp_target"
+                        android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:minHeight="52dp" android:background="@drawable/field_bg"
+                        android:paddingStart="14dp" android:paddingEnd="14dp" android:layout_marginTop="6dp" />
+                    <TextView android:id="@+id/tv_target_status" style="@style/Hint" />
+                    <Button android:id="@+id/btn_refresh_devices" style="@style/Secondary" android:text="@string/refresh_devices" />
+                    <View style="@style/Divider" />
+                    <TextView style="@style/FieldLabel" android:text="@string/type_label" />
+                    <RadioGroup android:id="@+id/rg_type"
+                        android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="vertical" android:paddingTop="4dp">
+                        <RadioButton android:id="@+id/rb_type_default" style="@style/Check" android:text="@string/type_default" />
+                        <RadioButton android:id="@+id/rb_type_instant" style="@style/Check" android:text="@string/type_instant" />
+                    </RadioGroup>
+                    <LinearLayout android:id="@+id/instant_row"
+                        android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="vertical" android:visibility="gone">
+                        <TextView style="@style/FieldLabel" android:text="@string/instant_dur_label" />
+                        <EditText android:id="@+id/et_instant_dur" style="@style/Num" android:hint="60" />
                     </LinearLayout>
-                </androidx.cardview.widget.CardView>
-            </LinearLayout>
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
 
             <!-- ===== المدد ===== -->
             <Button android:id="@+id/hdr_limits" style="@style/GroupHeader" android:text="@string/sec_limits" />
@@ -183,6 +146,17 @@
                 android:layout_height="wrap_content" android:orientation="vertical" android:visibility="gone">
                 <androidx.cardview.widget.CardView style="@style/Card">
                     <LinearLayout style="@style/CardInner">
+                        <TextView style="@style/FieldLabel" android:text="@string/presets_label" />
+                        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                            android:orientation="horizontal" android:layout_marginBottom="6dp">
+                            <Button android:id="@+id/btn_p1" style="@style/Secondary"
+                                android:layout_width="0dp" android:layout_weight="1" android:text="@string/preset_1" />
+                            <Button android:id="@+id/btn_p10" style="@style/Secondary"
+                                android:layout_width="0dp" android:layout_weight="1" android:text="@string/preset_10" />
+                            <Button android:id="@+id/btn_p30" style="@style/Secondary"
+                                android:layout_width="0dp" android:layout_weight="1" android:text="@string/preset_30" />
+                        </LinearLayout>
+                        <View style="@style/Divider" />
                         <CheckBox android:id="@+id/cb_yt" style="@style/Check" android:text="@string/limit_youtube" />
                         <TextView style="@style/Hint" android:text="@string/minutes_label" />
                         <EditText android:id="@+id/et_yt" style="@style/Num" android:hint="30" />
@@ -274,7 +248,8 @@
                         <EditText android:id="@+id/et_resume" style="@style/Num" android:hint="30" />
                     </LinearLayout>
                 </androidx.cardview.widget.CardView>
-                <androidx.cardview.widget.CardView style="@style/Card">
+                <!-- الإعداد الافتراضي القديم: استُبدل بنوع «افتراضي/لحظي» في الأعلى (مخفي) -->
+                <androidx.cardview.widget.CardView android:id="@+id/card_revert" style="@style/Card" android:visibility="gone">
                     <LinearLayout style="@style/CardInner">
                         <CheckBox android:id="@+id/cb_revert" style="@style/Check" android:text="@string/revert_label" />
                         <TextView style="@style/Hint" android:text="@string/revert_hint" />
@@ -286,11 +261,47 @@
                 </androidx.cardview.widget.CardView>
             </LinearLayout>
 
-            <!-- ===== حفظ الإعدادات والرقم السري (دائمة الظهور) ===== -->
-            <Button android:id="@+id/btn_save" style="@style/Primary" android:text="@string/save_settings" />
+            <!-- ===== ٧) حفظ وإرسال (يبقى في الإعدادات) ===== -->
+            <Button android:id="@+id/btn_save" style="@style/Primary" android:text="@string/save_send_target" />
+            <Button android:id="@+id/btn_remote_unlock" style="@style/Danger" android:text="@string/remote_unlock_target"
+                android:visibility="gone" />
+            <Button android:id="@+id/btn_close_settings" style="@style/Secondary" android:text="@string/close_settings" />
             <Button android:id="@+id/btn_change_pin" style="@style/Secondary" android:text="@string/change_pin" />
 
             <View style="@style/Divider" />
+            <TextView style="@style/Hint" android:text="@string/device_setup_hint" />
+
+            <!-- ===== إعداد هذا الجهاز: الدور والرمز والاسم ===== -->
+            <Button android:id="@+id/hdr_remote" style="@style/GroupHeader" android:text="@string/sec_remote" />
+            <LinearLayout android:id="@+id/box_remote" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:orientation="vertical" android:visibility="gone">
+                <androidx.cardview.widget.CardView style="@style/Card">
+                    <LinearLayout style="@style/CardInner">
+                        <TextView style="@style/Hint" android:text="@string/remote_hint" />
+                        <RadioGroup android:id="@+id/rg_role"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:paddingTop="6dp" android:paddingBottom="6dp">
+                            <RadioButton android:id="@+id/rb_parent" style="@style/Check" android:text="@string/role_parent" />
+                            <RadioButton android:id="@+id/rb_child" style="@style/Check" android:text="@string/role_child" />
+                        </RadioGroup>
+                        <TextView style="@style/FieldLabel" android:text="@string/sync_url_label" />
+                        <EditText android:id="@+id/et_sync_url" style="@style/Num"
+                            android:inputType="textUri" android:hint="https://xxxx.firebaseio.com" />
+                        <TextView style="@style/FieldLabel" android:text="@string/family_label" android:paddingTop="10dp" />
+                        <EditText android:id="@+id/et_family" style="@style/Num"
+                            android:inputType="textVisiblePassword" />
+                        <Button android:id="@+id/btn_gen_code" style="@style/Secondary" android:text="@string/gen_code" />
+                        <TextView style="@style/FieldLabel" android:text="@string/device_name_label" android:paddingTop="10dp" />
+                        <EditText android:id="@+id/et_device_name" style="@style/Num"
+                            android:inputType="textPersonName" />
+                        <Button android:id="@+id/btn_save_remote" style="@style/Secondary" android:text="@string/save_remote" />
+                        <Button android:id="@+id/btn_sync_now" style="@style/Secondary" android:text="@string/sync_now" />
+                        <TextView android:id="@+id/tv_sync_status" style="@style/Status" />
+                    </LinearLayout>
+                </androidx.cardview.widget.CardView>
+            </LinearLayout>
 
             <!-- ===== الصلاحيات ===== -->
             <Button android:id="@+id/hdr_perms" style="@style/GroupHeader" android:text="@string/permissions" />

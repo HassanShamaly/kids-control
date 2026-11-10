@@ -239,6 +239,15 @@ public class MonitorService extends Service {
         // انتهاء الإعداد اللحظي ← العودة للإعداد الافتراضي
         ConfigApplier.checkInstantExpiry(prefs, now);
 
+        // موقوف عن بُعد من جوال ولي الأمر: لا قفل ولا احتساب، وتبقى المزامنة فقط لاستقبال أمر التشغيل
+        if (prefs.remoteOff()) {
+            if (breakUntil > now) endBreak();
+            else if (locked) onUnlocked();
+            currentCat = AppClassifier.CAT_NONE;
+            updateNotificationRemoteOff();
+            return;
+        }
+
         // المراقبة متوقفة: عُد تلقائياً عند حلول الموعد، وإلا اعرض إشعار الحالة
         if (!prefs.enabled()) {
             long rAt = prefs.resumeAt();
@@ -441,6 +450,11 @@ public class MonitorService extends Service {
         c.setTimeInMillis(ts);
         return String.format(java.util.Locale.US, "%02d:%02d",
                 c.get(java.util.Calendar.HOUR_OF_DAY), c.get(java.util.Calendar.MINUTE));
+    }
+
+    private void updateNotificationRemoteOff() {
+        notify(buildNotification(getString(R.string.n_remote_off),
+                getString(R.string.n_remote_off_sub), null, ACT_NONE));
     }
 
     private void updateNotificationPaused() {

@@ -115,6 +115,14 @@ public class Prefs {
     public long lastInstantSeen()           { return sp.getLong(K_LAST_INSTANT, 0L); }
     public void setLastInstantSeen(long v)  { sp.edit().putLong(K_LAST_INSTANT, v).apply(); }
 
+    // ===== الإيقاف عن بُعد (من جوال ولي الأمر) =====
+    private static final String K_REMOTE_OFF = "remote_off";        // التطبيق موقوف عن بُعد على هذا الجهاز
+    private static final String K_LAST_POWER = "last_power_seen";   // آخر أمر إيقاف/تشغيل نُفّذ
+    public boolean remoteOff()              { return sp.getBoolean(K_REMOTE_OFF, false); }
+    public void setRemoteOff(boolean v)     { sp.edit().putBoolean(K_REMOTE_OFF, v).apply(); }
+    public long lastPowerSeen()             { return sp.getLong(K_LAST_POWER, 0L); }
+    public void setLastPowerSeen(long v)    { sp.edit().putLong(K_LAST_POWER, v).apply(); }
+
     public int ytLimit()     { return sp.getInt(K_YT_LIMIT, 30); }
     public int gameLimit()   { return sp.getInt(K_GAME_LIMIT, 30); }
     public boolean ytOn()    { return sp.getBoolean(K_YT_ON, true); }

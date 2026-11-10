@@ -32,7 +32,10 @@ public class RemoteSync {
     public static class Device {
         public final String id, name;
         public final long lastSeen;
-        Device(String id, String name, long lastSeen) { this.id = id; this.name = name; this.lastSeen = lastSeen; }
+        public final boolean off;      // التطبيق موقوف عن بُعد على هذا الجهاز
+        Device(String id, String name, long lastSeen, boolean off) {
+            this.id = id; this.name = name; this.lastSeen = lastSeen; this.off = off;
+        }
     }
     public interface DevicesCallback { void onResult(List<Device> devices, boolean ok); }
     public interface ConfigCallback { void onResult(org.json.JSONObject config, boolean ok); }
@@ -49,6 +52,8 @@ public class RemoteSync {
     private static String devicesRoot(Prefs p) { return base(p) + "/kc/" + enc(p.familyCode()) + "/devices"; }
     private static String configNode(Prefs p, String id) { return devicesRoot(p) + "/" + enc(id) + "/config.json"; }
     private static String metaNode(Prefs p, String id) { return devicesRoot(p) + "/" + enc(id) + "/meta.json"; }
+    private static String powerNode(Prefs p, String id) { return devicesRoot(p) + "/" + enc(id) + "/power.json"; }
+    private static String deviceNode(Prefs p, String id) { return devicesRoot(p) + "/" + enc(id) + ".json"; }
 
     // ===== جهاز الطفل =====
 
@@ -66,6 +71,7 @@ public class RemoteSync {
                 o.put("name", name);
                 o.put("model", Build.MODEL);
                 o.put("lastSeen", System.currentTimeMillis());
+                o.put("off", p.remoteOff());
                 write(url, "PUT", o.toString());
             } catch (Throwable ignored) { }
         }).start();
@@ -90,16 +96,33 @@ public class RemoteSync {
             if (showResult) Toast.makeText(c, R.string.sync_need_setup, Toast.LENGTH_LONG).show();
             return;
         }
-        final String url = configNode(p, p.deviceId());
+        final String url = deviceNode(p, p.deviceId());   // طلب واحد: config + power + meta
         new Thread(() -> {
             String[] r = read(url);               // r[0]=body أو null ، r[1]="ok"/"err"
             final boolean httpOk = "ok".equals(r[1]);
             final String body = r[0];
-            boolean hasData = body != null && body.trim().length() > 2 && !"null".equals(body.trim());
+            org.json.JSONObject root = null;
+            if (body != null && body.trim().length() > 2 && !"null".equals(body.trim())) {
+                try { root = new org.json.JSONObject(body); } catch (Throwable ignored) { }
+            }
+            // أمر الإيقاف/التشغيل عن بُعد
+            if (root != null && p.isChild()) {
+                org.json.JSONObject pw = root.optJSONObject("power");
+                if (pw != null) {
+                    long ts = pw.optLong("ts", 0L);
+                    if (ts > 0 && ts != p.lastPowerSeen()) {
+                        p.setLastPowerSeen(ts);
+                        p.setRemoteOff(!pw.optBoolean("on", true));
+                        registerDevice(c);   // حدّث الحالة الظاهرة عند ولي الأمر فوراً
+                    }
+                }
+            }
+            org.json.JSONObject cfgObj = root != null ? root.optJSONObject("config") : null;
+            boolean hasData = cfgObj != null;
             boolean applied = false;
             if (hasData) {
                 try {
-                    org.json.JSONObject o = new org.json.JSONObject(body);
+                    org.json.JSONObject o = cfgObj;
                     // ١) الافتراضي: يُطبَّق فقط عند صدور نسخة جديدة منه (حتى لا يمحو اللحظي كل دقيقة)
                     long rev = o.optLong("rev", 0L);
                     if (rev != 0L && rev != p.lastDefaultRev()) {
@@ -229,6 +252,31 @@ public class RemoteSync {
         }).start();
     }
 
+    /**
+     * إيقاف/تشغيل التطبيق على الجهاز المحدَّد عن بُعد. يُحفظ في عقدة مستقلة (power)
+     * حتى لا يمحوه نشر الإعداد الافتراضي.
+     */
+    public static void setPower(final Context c, final String targetId, final boolean on, final boolean showResult) {
+        final Prefs p = new Prefs(c);
+        final Handler ui = new Handler(Looper.getMainLooper());
+        if (targetId == null || targetId.isEmpty()) {
+            if (showResult) Toast.makeText(c, R.string.dev_pick_first, Toast.LENGTH_LONG).show();
+            return;
+        }
+        if (!p.syncConfigured()) {
+            if (showResult) Toast.makeText(c, R.string.sync_need_setup, Toast.LENGTH_LONG).show();
+            return;
+        }
+        final String url = powerNode(p, targetId);
+        final String body = "{\"on\":" + on + ",\"ts\":" + System.currentTimeMillis() + "}";
+        new Thread(() -> {
+            boolean ok = write(url, "PUT", body);
+            if (showResult) ui.post(() -> Toast.makeText(c,
+                    !ok ? R.string.sync_failed : on ? R.string.remote_resume_sent : R.string.remote_stop_sent,
+                    Toast.LENGTH_LONG).show());
+        }).start();
+    }
+
     /** يرسل أمر فتح قفل للجهاز المحدَّد فقط (تحديث حقل unlock دون المساس ببقية الإعداد). */
     public static void unlockTarget(final Context c, final String targetId, final boolean showResult) {
         final Prefs p = new Prefs(c);
@@ -283,15 +331,18 @@ public class RemoteSync {
                     while (it.hasNext()) {
                         String id = it.next();
                         org.json.JSONObject dev = root.optJSONObject(id);
-                        String name = id; long seen = 0L;
+                        String name = id; long seen = 0L; boolean off = false;
                         if (dev != null) {
                             org.json.JSONObject meta = dev.optJSONObject("meta");
                             if (meta != null) {
                                 name = meta.optString("name", id);
                                 seen = meta.optLong("lastSeen", 0L);
+                                off = meta.optBoolean("off", false);
                             }
+                            org.json.JSONObject pw = dev.optJSONObject("power");   // الأمر الأحدث المرسَل
+                            if (pw != null && pw.optLong("ts", 0L) > seen) off = !pw.optBoolean("on", true);
                         }
-                        out.add(new Device(id, name, seen));
+                        out.add(new Device(id, name, seen, off));
                     }
                 } catch (Throwable ignored) { }
             }

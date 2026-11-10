@@ -265,6 +265,10 @@
             <Button android:id="@+id/btn_save" style="@style/Primary" android:text="@string/save_send_target" />
             <Button android:id="@+id/btn_remote_unlock" style="@style/Danger" android:text="@string/remote_unlock_target"
                 android:visibility="gone" />
+            <Button android:id="@+id/btn_remote_stop" style="@style/Secondary" android:text="@string/remote_stop"
+                android:visibility="gone" />
+            <Button android:id="@+id/btn_remote_resume" style="@style/Secondary" android:text="@string/remote_resume"
+                android:visibility="gone" />
             <Button android:id="@+id/btn_close_settings" style="@style/Secondary" android:text="@string/close_settings" />
             <Button android:id="@+id/btn_change_pin" style="@style/Secondary" android:text="@string/change_pin" />
 

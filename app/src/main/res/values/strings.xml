@@ -287,4 +287,16 @@
     <string name="target_status_instant_active">⏳ على هذا الجهاز إعداد لحظي سارٍ حتى %1$s</string>
     <string name="target_no_sync">لربط أجهزة أخرى: اضبط «التحكّم عن بُعد» بالأسفل (الدور=ولي الأمر + الرمز).</string>
     <string name="preset_applied_fmt">باقة %1$d دقيقة — اضغط «حفظ وإرسال» لتطبيقها</string>
+    <string name="remote_stop">⏸ إيقاف التطبيق على هذا الجهاز</string>
+    <string name="remote_resume">▶ إعادة تشغيل التطبيق على هذا الجهاز</string>
+    <string name="remote_stop_confirm">سيتوقف التطبيق على «%1$s» خلال دقيقة: لا قفل ولا احتساب للوقت حتى تعيد تشغيله من جوالك. متابعة؟</string>
+    <string name="remote_stop_yes">نعم، أوقفه</string>
+    <string name="remote_stop_sent">تم إرسال أمر الإيقاف ⏸ — يتوقف خلال دقيقة</string>
+    <string name="remote_resume_sent">تم إرسال أمر التشغيل ▶ — يعود خلال دقيقة</string>
+    <string name="dev_off_tag">⏸ متوقف</string>
+    <string name="target_status_off">⏸ التطبيق متوقف حالياً على هذا الجهاز (اضغط «إعادة تشغيل» لإرجاعه)</string>
+    <string name="n_remote_off">⏸ متوقف من جهاز ولي الأمر</string>
+    <string name="n_remote_off_sub">لا قفل ولا احتساب للوقت حتى يعيد ولي الأمر التشغيل.</string>
+    <string name="home_remote_off">⏸ متوقف من جهاز ولي الأمر</string>
+    <string name="home_remote_off_sub">لا قيود حالياً. يعيد ولي الأمر التشغيل من جواله.</string>
 </resources>

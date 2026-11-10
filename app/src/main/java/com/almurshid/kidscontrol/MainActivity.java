@@ -120,6 +120,11 @@ public class MainActivity extends AppCompatActivity {
     private void refreshHome() {
         if (tvHomeStatus == null) return;
         boolean on = prefs.enabled();
+        if (on && prefs.remoteOff()) {                 // موقوف من جوال ولي الأمر
+            tvHomeStatus.setText(R.string.home_remote_off);
+            tvHomeSub.setText(R.string.home_remote_off_sub);
+            return;
+        }
         if (on && prefs.locked()) {
             tvHomeStatus.setText(R.string.home_locked);
             tvHomeSub.setText(R.string.home_on_sub);
@@ -850,6 +855,24 @@ public class MainActivity extends AppCompatActivity {
         findViewById(R.id.btn_remote_unlock).setOnClickListener(v -> {
             if (!mTarget.isEmpty()) RemoteSync.unlockTarget(this, mTarget, true);
         });
+        findViewById(R.id.btn_remote_stop).setOnClickListener(v -> {
+            if (mTarget.isEmpty()) return;
+            final String id = mTarget;
+            RemoteSync.Device d = findTarget(id);
+            new AlertDialog.Builder(this)
+                    .setMessage(getString(R.string.remote_stop_confirm, d != null ? d.name : id))
+                    .setPositiveButton(R.string.remote_stop_yes, (dlg, w) -> {
+                        RemoteSync.setPower(this, id, false, true);
+                        markTargetOff(id, true);
+                    })
+                    .setNegativeButton(R.string.cancel, null)
+                    .show();
+        });
+        findViewById(R.id.btn_remote_resume).setOnClickListener(v -> {
+            if (mTarget.isEmpty()) return;
+            RemoteSync.setPower(this, mTarget, true, true);
+            markTargetOff(mTarget, false);
+        });
 
         fillTargetSpinner();     // «هذا الجهاز» مبدئياً
         loadTarget("");          // ابدأ بإعدادات جوالك
@@ -893,7 +916,8 @@ public class MainActivity extends AppCompatActivity {
         int sel = 0;
         for (int i = 0; i < mTargets.size(); i++) {
             RemoteSync.Device d = mTargets.get(i);
-            names.add("👦 " + d.name + "  ·  " + seenText(d.lastSeen));
+            names.add((d.off ? "⏸ " : "👦 ") + d.name + "  ·  "
+                    + (d.off ? getString(R.string.dev_off_tag) + "  ·  " : "") + seenText(d.lastSeen));
             if (d.id.equals(mTarget)) sel = i + 1;
         }
         android.widget.ArrayAdapter<String> ad = new android.widget.ArrayAdapter<>(
@@ -931,8 +955,7 @@ public class MainActivity extends AppCompatActivity {
         mLoadedTarget = target;
         final TextView status = findViewById(R.id.tv_target_status);
         final boolean self = target.isEmpty();
-        View unlock = findViewById(R.id.btn_remote_unlock);
-        if (unlock != null) unlock.setVisibility(self ? View.GONE : View.VISIBLE);
+        updateTargetActions();
         int pv = self ? View.VISIBLE : View.GONE;   // اختيار التطبيقات يعتمد على تطبيقات هذا الجهاز نفسه
         findViewById(R.id.btn_pick_video).setVisibility(pv);
         findViewById(R.id.btn_pick_games).setVisibility(pv);
@@ -958,9 +981,34 @@ public class MainActivity extends AppCompatActivity {
             if (status != null) {
                 if (!ok) status.setText(R.string.sync_failed);
                 else status.setText(getString(R.string.target_loaded_fmt, d != null ? d.name : target)
-                        + "  ·  " + seenText(d != null ? d.lastSeen : 0L));
+                        + "  ·  " + seenText(d != null ? d.lastSeen : 0L)
+                        + (d != null && d.off ? "\n" + getString(R.string.target_status_off) : ""));
             }
         });
+    }
+
+    /** أزرار الفتح والإيقاف والتشغيل عن بُعد: تظهر لولي الأمر عند اختيار جهاز طفل فقط. */
+    private void updateTargetActions() {
+        int v = (!prefs.isChild() && !mTarget.isEmpty()) ? View.VISIBLE : View.GONE;
+        for (int id : new int[]{R.id.btn_remote_unlock, R.id.btn_remote_stop, R.id.btn_remote_resume}) {
+            View b = findViewById(id);
+            if (b != null) b.setVisibility(v);
+        }
+    }
+
+    /** يحدّث حالة «متوقف» للجهاز في القائمة والسطر التوضيحي فور إرسال الأمر. */
+    private void markTargetOff(String id, boolean off) {
+        for (int i = 0; i < mTargets.size(); i++) {
+            RemoteSync.Device d = mTargets.get(i);
+            if (d.id.equals(id)) mTargets.set(i, new RemoteSync.Device(d.id, d.name, d.lastSeen, off));
+        }
+        fillTargetSpinner();
+        TextView status = findViewById(R.id.tv_target_status);
+        RemoteSync.Device d = findTarget(id);
+        if (status != null && id.equals(mTarget)) {
+            status.setText(off ? getString(R.string.target_status_off)
+                    : getString(R.string.target_loaded_fmt, d != null ? d.name : id));
+        }
     }
 
     /** ٧) حفظ وإرسال: يطبّق الحقول على الجهاز المحدَّد فقط، ويبقى في الإعدادات. */
@@ -1046,8 +1094,7 @@ public class MainActivity extends AppCompatActivity {
         View notice = findViewById(R.id.tv_child_notice);
         if (notice != null) notice.setVisibility(child ? View.VISIBLE : View.GONE);
         // «فتح القفل عن بُعد» يظهر فقط عند اختيار جهاز طفل
-        View unlock = findViewById(R.id.btn_remote_unlock);
-        if (unlock != null) unlock.setVisibility(!child && !mTarget.isEmpty() ? View.VISIBLE : View.GONE);
+        updateTargetActions();
         // أزرار الإيقاف/الإغلاق في الشاشة الرئيسية تُخفى على جهاز الطفل
         applyHomeRoleLock(child);
     }

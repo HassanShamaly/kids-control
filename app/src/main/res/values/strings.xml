@@ -299,4 +299,6 @@
     <string name="n_remote_off_sub">لا قفل ولا احتساب للوقت حتى يعيد ولي الأمر التشغيل.</string>
     <string name="home_remote_off">⏸ متوقف من جهاز ولي الأمر</string>
     <string name="home_remote_off_sub">لا قيود حالياً. يعيد ولي الأمر التشغيل من جواله.</string>
+    <string name="owner_unlock_sub">ضع بصمتك، أو اضغط «الرقم السري»</string>
+    <string name="use_pin">الرقم السري</string>
 </resources>

@@ -37,8 +37,10 @@ public class UnlockActivity extends AppCompatActivity {
     }
 
     private void handle(Intent intent) {
+        boolean owner = intent != null && intent.getBooleanExtra("owner", false);
         boolean emergency = intent != null && intent.getBooleanExtra("emergency", false);
         Prefs prefs = new Prefs(this);
+        if (owner) { ownerUnlock(prefs); return; }   // جهاز ولي الأمر: بصمة أو رقم سري
         if (emergency || prefs.breakActive()) {
             emergencyPin(prefs);
         } else {
@@ -80,6 +82,50 @@ public class UnlockActivity extends AppCompatActivity {
         Intent i = new Intent(MonitorService.ACTION_UNLOCK_OK);
         i.putExtra("break_override", true);
         LocalBroadcastManager.getInstance(this).sendBroadcast(i);
+    }
+
+    // ===== جهاز ولي الأمر: بصمتك أولاً، و«الرقم السري» بديلاً (تنهي القفل أو الاستراحة) =====
+    private void ownerUnlock(final Prefs prefs) {
+        final int bio = BiometricManager.Authenticators.BIOMETRIC_STRONG
+                | BiometricManager.Authenticators.BIOMETRIC_WEAK;
+        if (BiometricManager.from(this).canAuthenticate(bio) != BiometricManager.BIOMETRIC_SUCCESS) {
+            emergencyPin(prefs);
+            return;
+        }
+        BiometricPrompt prompt = new BiometricPrompt(this,
+                ContextCompat.getMainExecutor(this),
+                new BiometricPrompt.AuthenticationCallback() {
+                    @Override
+                    public void onAuthenticationSucceeded(@NonNull BiometricPrompt.AuthenticationResult result) {
+                        sendBreakOverride();   // ينهي الاستراحة أو القفل العادي
+                        finish();
+                    }
+
+                    @Override
+                    public void onAuthenticationError(int code, @NonNull CharSequence errString) {
+                        if (code == BiometricPrompt.ERROR_NEGATIVE_BUTTON
+                                || code == BiometricPrompt.ERROR_LOCKOUT
+                                || code == BiometricPrompt.ERROR_LOCKOUT_PERMANENT
+                                || code == BiometricPrompt.ERROR_NO_BIOMETRICS
+                                || code == BiometricPrompt.ERROR_HW_UNAVAILABLE) {
+                            emergencyPin(prefs);         // الرقم السري للتطبيق
+                        } else {
+                            reshowOverlay();             // أُلغي: أعِد القفل فوراً
+                            finish();
+                        }
+                    }
+                });
+        BiometricPrompt.PromptInfo info = new BiometricPrompt.PromptInfo.Builder()
+                .setTitle(getString(R.string.unlock_title))
+                .setSubtitle(getString(R.string.owner_unlock_sub))
+                .setAllowedAuthenticators(bio)
+                .setNegativeButtonText(getString(R.string.use_pin))
+                .build();
+        try {
+            prompt.authenticate(info);
+        } catch (Throwable t) {
+            emergencyPin(prefs);
+        }
     }
 
     // ===== قفل عادي: بصمة =====

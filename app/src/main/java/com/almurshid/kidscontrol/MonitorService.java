@@ -657,7 +657,15 @@ public class MonitorService extends Service {
         } else {
             bu.setVisibility(View.VISIBLE);
             bu.setText(getString(R.string.unlock_btn));
-            bu.setOnClickListener(v -> launchUnlock());
+            if (childDevice) {
+                bu.setOnClickListener(v -> launchUnlock());
+            } else {
+                // جهازك: أزِل الطبقة أولاً حتى تظهر البصمة/الرقم السري فوق كل شيء (قفل عادي أو استراحة)
+                bu.setOnClickListener(v -> {
+                    if (bgHandler != null) bgHandler.post(this::startOwnerUnlock);
+                    else startOwnerUnlock();
+                });
+            }
             if (sub != null) ((TextView) sub).setText(R.string.lock_sub);
         }
 
@@ -671,6 +679,21 @@ public class MonitorService extends Service {
                 PixelFormat.OPAQUE);
         lp.gravity = Gravity.CENTER;
         try { wm.addView(overlay, lp); } catch (Throwable t) { overlay = null; }
+    }
+
+    /**
+     * فتح القفل على جهاز ولي الأمر: تُزال الطبقة مؤقتاً (60 ث) ثم تُطلب بصمتك،
+     * مع زر «الرقم السري» كبديل. الإلغاء يعيد الطبقة فوراً.
+     */
+    private void startOwnerUnlock() {
+        overlaySuppressUntil = System.currentTimeMillis() + 60_000L;
+        postRemoveOverlay();
+        uiHandler.postDelayed(() -> {
+            Intent u = new Intent(this, UnlockActivity.class)
+                    .putExtra("owner", true)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            try { startActivity(u); } catch (Throwable ignored) { }
+        }, 250L);
     }
 
     /** مدخل الطوارئ (إيماءة 5 ضغطات أو الإشعار): يُزيل الطبقة ثم يطلب الرقم السري فوق كل شيء. */

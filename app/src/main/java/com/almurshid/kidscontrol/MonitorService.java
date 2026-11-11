@@ -62,6 +62,8 @@ public class MonitorService extends Service {
 
     private static volatile boolean running = false;
     public static boolean isActive() { return running; }
+    /** آخر عطل في حلقة المراقبة (null = لا أعطال). */
+    public static volatile String lastError = null;
 
     private Handler bgHandler;   // خيط الفحص
     private Handler uiHandler;    // الخيط الرئيسي (الطبقة)
@@ -165,7 +167,11 @@ public class MonitorService extends Service {
 
         loop = new Runnable() {
             @Override public void run() {
-                try { poll(); } catch (Throwable ignored) {}
+                try { poll(); }
+                catch (Throwable t) {   // لا نبتلع العطل بصمت: يُبلَّغ به جهاز ولي الأمر
+                    String m = String.valueOf(t.getMessage());
+                    lastError = t.getClass().getSimpleName() + ": " + (m.length() > 80 ? m.substring(0, 80) : m);
+                }
                 bgHandler.postDelayed(this, POLL_MS);
             }
         };
@@ -239,9 +245,10 @@ public class MonitorService extends Service {
         long el = android.os.SystemClock.elapsedRealtime();
         if (lastWallTs != 0L) {
             long jump = (now - lastWallTs) - (el - lastElapsedTs);
-            if (Math.abs(jump) > 30_000L && breakUntil > 0L) {
-                breakUntil += jump;
-                prefs.setBreakUntil(breakUntil);
+            if (Math.abs(jump) > 30_000L) {
+                if (breakUntil > 0L) { breakUntil += jump; prefs.setBreakUntil(breakUntil); }
+                long iu = prefs.instantUntil();
+                if (iu > 0L) prefs.setInstantUntil(iu + jump);   // واللحظي كذلك
             }
         }
         lastWallTs = now;

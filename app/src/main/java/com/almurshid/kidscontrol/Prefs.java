@@ -95,6 +95,22 @@ public class Prefs {
         sp = c.getApplicationContext().getSharedPreferences(file, Context.MODE_PRIVATE);
     }
 
+    /**
+     * فرق ساعة الخادم عن ساعة هذا الجهاز (يُحدَّث مع كل مزامنة). يُستخدم لحساب الأوقات
+     * (الليل، الجدول، أيام السماح) بوقت موثوق حتى لو غُيّرت ساعة الجوال.
+     */
+    public static volatile long clockOffsetMs = 0L;
+    /** الوقت الموثوق الآن (ساعة الجهاز مصحَّحة إن كان الفرق عن الخادم أكثر من دقيقتين). */
+    public static long trustedNow() {
+        long off = clockOffsetMs;
+        return System.currentTimeMillis() + (Math.abs(off) > 120_000L ? off : 0L);
+    }
+    static java.util.Calendar nowCal() {
+        java.util.Calendar c = java.util.Calendar.getInstance();
+        c.setTimeInMillis(trustedNow());
+        return c;
+    }
+
     /** مسودّة تحرير إعدادات الجهاز المستهدف في شاشة الإعدادات. */
     public static Prefs draft(Context c) { return new Prefs(c, "kc_edit_draft"); }
 
@@ -236,7 +252,7 @@ public class Prefs {
     /** هل نحن الآن داخل فترة التعطيل (فتُوقَف المراقبة)؟ */
     public boolean inPauseWindow() {
         if (!schedOn()) return false;
-        java.util.Calendar c = java.util.Calendar.getInstance();
+        java.util.Calendar c = nowCal();
         int m = c.get(java.util.Calendar.HOUR_OF_DAY) * 60 + c.get(java.util.Calendar.MINUTE);
         int from = schedFrom(), to = schedTo();
         if (from == to) return false;
@@ -256,7 +272,7 @@ public class Prefs {
 
     public boolean inNightWindow() {
         if (!nightOn()) return false;
-        java.util.Calendar c = java.util.Calendar.getInstance();
+        java.util.Calendar c = nowCal();
         int m = c.get(java.util.Calendar.HOUR_OF_DAY) * 60 + c.get(java.util.Calendar.MINUTE);
         int from = nightFrom(), to = nightTo();
         if (from == to) return false;
@@ -279,7 +295,7 @@ public class Prefs {
     }
     public boolean isRelaxedToday() {
         if (!relaxOn()) return false;
-        int dow = java.util.Calendar.getInstance().get(java.util.Calendar.DAY_OF_WEEK);
+        int dow = nowCal().get(java.util.Calendar.DAY_OF_WEEK);
         return relaxDays().contains(String.valueOf(dow));
     }
 

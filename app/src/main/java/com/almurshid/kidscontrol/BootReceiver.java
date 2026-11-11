@@ -9,14 +9,7 @@ import android.os.Build;
 public class BootReceiver extends BroadcastReceiver {
     @Override
     public void onReceive(Context context, Intent intent) {
-        Prefs prefs = new Prefs(context);
-        if (!prefs.enabled()) return;
-
-        Intent svc = new Intent(context, MonitorService.class);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            context.startForegroundService(svc);
-        } else {
-            context.startService(svc);
-        }
+        Watchdog.schedule(context);              // (إعادة) جدولة الحارس الدوري
+        MonitorService.ensureRunning(context);   // يشغّل الخدمة إن كانت المراقبة مفعّلة (آمن من الاستثناءات)
     }
 }

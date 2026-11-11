@@ -304,4 +304,17 @@
     <string name="pin_locked_fmt">محاولات خاطئة كثيرة — أعد المحاولة بعد %1$d دقيقة</string>
     <string name="reset_child_blocked">لا يمكن إعادة ضبط الرقم السري على جهاز الطفل. غيّر الدور من جهاز ولي الأمر أو أعد تثبيت التطبيق.</string>
     <string name="child_pin_sub">أدخل الرقم السري للتطبيق (ولي الأمر)</string>
+    <string name="fix_battery">استثناء التطبيق من توفير البطارية (مهم)</string>
+    <string name="st_old_version">⚠ نسخة قديمة على الجهاز — حدّثه ليظهر تأكيد الاستلام وحالته</string>
+    <string name="st_never_set">لم يُرسَل لهذا الجهاز إعداد بعد (يعمل بإعداده المحلي)</string>
+    <string name="st_default_ok">✓ الإعداد الافتراضي مطبَّق على الجهاز</string>
+    <string name="st_default_pending">⏳ الإعداد الافتراضي لم يُطبَّق بعد — بانتظار اتصال الجهاز</string>
+    <string name="st_instant_pending">⏳ الإعداد اللحظي لم يصل للجهاز بعد</string>
+    <string name="st_w_stopped">⚠ المراقبة متوقفة على الجهاز</string>
+    <string name="st_w_usage">⚠ صلاحية «بيانات الاستخدام» غير ممنوحة</string>
+    <string name="st_w_overlay">⚠ صلاحية «العرض فوق التطبيقات» غير ممنوحة (لن يظهر القفل)</string>
+    <string name="st_w_a11y">⚠ خدمة الحماية (إمكانية الوصول) متوقفة</string>
+    <string name="st_w_batt">⚠ التطبيق غير مستثنى من توفير البطارية (قد يوقفه النظام)</string>
+    <string name="st_w_err">⚠ عطل في المراقبة: %1$s</string>
+    <string name="st_version">النسخة: %1$s</string>
 </resources>

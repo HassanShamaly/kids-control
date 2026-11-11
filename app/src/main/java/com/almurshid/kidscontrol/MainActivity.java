@@ -107,6 +107,15 @@ public class MainActivity extends AppCompatActivity {
         findViewById(R.id.btn_home_stop).setOnClickListener(v -> confirmStop());      // إيقاف برقم سري
         findViewById(R.id.btn_home_close).setOnClickListener(v -> confirmFullClose()); // إغلاق تام برقم سري
         applyHomeRoleLock(prefs.isChild()); // إخفاء الإيقاف/الإغلاق على جهاز الطفل
+        findViewById(R.id.btn_home_battery).setOnClickListener(v -> {
+            try {
+                startActivity(new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                        Uri.parse("package:" + getPackageName())));
+            } catch (Throwable t) {
+                try { startActivity(new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)); }
+                catch (Throwable ignored) { }
+            }
+        });
         findViewById(R.id.btn_open_settings).setOnClickListener(v -> openSettings()); // رقم سري + بصمة
         findViewById(R.id.btn_download_latest).setOnClickListener(v -> UpdateChecker.check(this, true));
         TextView ver = findViewById(R.id.tv_version);
@@ -119,6 +128,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void refreshHome() {
         if (tvHomeStatus == null) return;
+        refreshHomeWarnings();
         boolean on = prefs.enabled();
         if (on && prefs.remoteOff()) {                 // موقوف من جوال ولي الأمر
             tvHomeStatus.setText(R.string.home_remote_off);
@@ -907,6 +917,7 @@ public class MainActivity extends AppCompatActivity {
                     if (!d.id.equals(prefs.deviceId())) mTargets.add(d);   // جوالك يظهر مرة واحدة فقط
             }
             fillTargetSpinner();
+            updateTargetStatus();
             if (showToast && !ok) Toast.makeText(this, R.string.sync_failed, Toast.LENGTH_LONG).show();
         });
     }
@@ -933,7 +944,7 @@ public class MainActivity extends AppCompatActivity {
 
     private String seenText(long ts) {
         if (ts <= 0) return getString(R.string.seen_never);
-        long min = Math.max(0, (System.currentTimeMillis() - ts) / 60_000L);
+        long min = Math.max(0, (System.currentTimeMillis() + RemoteSync.serverOffsetMs - ts) / 60_000L);
         if (min < 2) return getString(R.string.seen_now);
         if (min < 60) return getString(R.string.seen_min_fmt, (int) min);
         if (min < 24 * 60) return getString(R.string.seen_hour_fmt, (int) (min / 60));
@@ -981,14 +992,38 @@ public class MainActivity extends AppCompatActivity {
             draft.clearAll();
             if (config != null) draft.applyConfig(config);  // جهاز لم يُضبط بعد ← القيم الافتراضية
             loadFieldsFrom(draft);
-            RemoteSync.Device d = findTarget(target);
-            if (status != null) {
-                if (!ok) status.setText(R.string.sync_failed);
-                else status.setText(getString(R.string.target_loaded_fmt, d != null ? d.name : target)
-                        + "  ·  " + seenText(d != null ? d.lastSeen : 0L)
-                        + (d != null && d.off ? "\n" + getString(R.string.target_status_off) : ""));
-            }
+            if (status != null && !ok) status.setText(R.string.sync_failed);
+            else updateTargetStatus();
         });
+    }
+
+    private boolean batteryExempt() {
+        try {
+            android.os.PowerManager pm = (android.os.PowerManager) getSystemService(Context.POWER_SERVICE);
+            return pm == null || pm.isIgnoringBatteryOptimizations(getPackageName());
+        } catch (Throwable t) { return true; }
+    }
+
+    /** تحذيرات هذا الجهاز في الشاشة الرئيسية: ما قد يوقف المراقبة دون علمك. */
+    private void refreshHomeWarnings() {
+        TextView w = findViewById(R.id.tv_home_warn);
+        View fix = findViewById(R.id.btn_home_battery);
+        if (w == null || fix == null) return;
+        boolean batt = batteryExempt();
+        fix.setVisibility(batt ? View.GONE : View.VISIBLE);
+        StringBuilder sb = new StringBuilder();
+        if (prefs.enabled()) {
+            if (!batt) sb.append(getString(R.string.st_w_batt)).append('\n');
+            if (!hasUsageAccess()) sb.append(getString(R.string.st_w_usage)).append('\n');
+            if (!Settings.canDrawOverlays(this)) sb.append(getString(R.string.st_w_overlay)).append('\n');
+            if (!KidsAccessibilityService.isRunning()) sb.append(getString(R.string.st_w_a11y)).append('\n');
+            if (MonitorService.lastError != null)
+                sb.append(getString(R.string.st_w_err, MonitorService.lastError)).append('\n');
+        } else if (!batt) {
+            sb.append(getString(R.string.st_w_batt)).append('\n');
+        }
+        w.setText(sb.toString().trim());
+        w.setVisibility(sb.length() > 0 ? View.VISIBLE : View.GONE);
     }
 
     /** أزرار الفتح والإيقاف والتشغيل عن بُعد: تظهر لولي الأمر عند اختيار جهاز طفل فقط. */
@@ -1004,7 +1039,7 @@ public class MainActivity extends AppCompatActivity {
     private void markTargetOff(String id, boolean off) {
         for (int i = 0; i < mTargets.size(); i++) {
             RemoteSync.Device d = mTargets.get(i);
-            if (d.id.equals(id)) mTargets.set(i, new RemoteSync.Device(d.id, d.name, d.lastSeen, off));
+            if (d.id.equals(id)) d.off = off;
         }
         fillTargetSpinner();
         TextView status = findViewById(R.id.tv_target_status);
@@ -1033,11 +1068,51 @@ public class MainActivity extends AppCompatActivity {
             }
             nudgeService();
             loadTarget("");
-        } else if (instant) {
-            RemoteSync.sendInstant(this, mTarget, cfg, dur, true);
         } else {
-            RemoteSync.publishConfigToTarget(this, mTarget, cfg, true);
+            if (instant) RemoteSync.sendInstant(this, mTarget, cfg, dur, true);
+            else RemoteSync.publishConfigToTarget(this, mTarget, cfg, true);
+            scheduleAckCheck();
         }
+    }
+
+    /** بعد الإرسال: أعِد قراءة حالة الأجهزة عدة مرات لإظهار «تم التطبيق ✓» حين يستلم الجهاز. */
+    private void scheduleAckCheck() {
+        final View root = getWindow().getDecorView();
+        for (long delay : new long[]{4_000L, 35_000L, 75_000L, 150_000L}) {
+            root.postDelayed(() -> { if (!isFinishing() && prefs.isParent()) refreshTargets(false); }, delay);
+        }
+    }
+
+    /** سطر حالة الجهاز المحدَّد: آخر اتصال، هل طُبّق الإعداد، وأي مشكلة في الجهاز. */
+    private void updateTargetStatus() {
+        TextView status = findViewById(R.id.tv_target_status);
+        if (status == null || mTarget.isEmpty()) return;
+        RemoteSync.Device d = findTarget(mTarget);
+        if (d == null) return;
+        StringBuilder sb = new StringBuilder();
+        sb.append(d.name).append("  ·  ").append(seenText(d.lastSeen));
+        org.json.JSONObject m = d.meta;
+        if (d.off) sb.append('\n').append(getString(R.string.target_status_off));
+        if (m == null || !m.has("ver")) {
+            sb.append('\n').append(getString(R.string.st_old_version));
+        } else {
+            if (d.cfgRev == 0L) sb.append('\n').append(getString(R.string.st_never_set));
+            else sb.append('\n').append(getString(m.optLong("appliedRev", 0L) == d.cfgRev
+                    ? R.string.st_default_ok : R.string.st_default_pending));
+            if (d.instantTs != 0L && m.optLong("instantTs", 0L) != d.instantTs)
+                sb.append('\n').append(getString(R.string.st_instant_pending));
+            if (!d.off) {
+                if (!m.optBoolean("enabled", true) || !m.optBoolean("svc", true))
+                    sb.append('\n').append(getString(R.string.st_w_stopped));
+                if (!m.optBoolean("usage", true)) sb.append('\n').append(getString(R.string.st_w_usage));
+                if (!m.optBoolean("overlay", true)) sb.append('\n').append(getString(R.string.st_w_overlay));
+                if (!m.optBoolean("a11y", true)) sb.append('\n').append(getString(R.string.st_w_a11y));
+                if (!m.optBoolean("batt", true)) sb.append('\n').append(getString(R.string.st_w_batt));
+                if (m.has("err")) sb.append('\n').append(getString(R.string.st_w_err, m.optString("err")));
+            }
+            sb.append('\n').append(getString(R.string.st_version, m.optString("ver")));
+        }
+        status.setText(sb.toString());
     }
 
     /** يوقظ خدمة المراقبة لتقرأ الإعدادات الجديدة فوراً (إن كانت مفعّلة) — دون رسائل. */

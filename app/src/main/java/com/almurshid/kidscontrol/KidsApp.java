@@ -18,6 +18,7 @@ public class KidsApp extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
+        Watchdog.schedule(this);
         final Thread.UncaughtExceptionHandler prev = Thread.getDefaultUncaughtExceptionHandler();
         Thread.setDefaultUncaughtExceptionHandler((thread, ex) -> {
             try {

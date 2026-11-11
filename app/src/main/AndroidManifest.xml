@@ -21,6 +21,8 @@
         tools:ignore="QueryAllPackagesPermission" />
     <!-- تنزيل التحديث داخل التطبيق وفتح شاشة تثبيته -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- طلب استثناء البطارية حتى لا يوقف النظام خدمة المراقبة -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <application
         android:name=".KidsApp"

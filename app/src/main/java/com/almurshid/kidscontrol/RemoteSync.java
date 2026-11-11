@@ -28,14 +28,57 @@ import java.util.List;
 public class RemoteSync {
 
     private static volatile long lastPullTs = 0L;
+    /** ساعة الخادم ناقص ساعة هذا الجهاز (من ترويسة Date)، لمقارنة الأوقات بين الأجهزة. */
+    public static volatile long serverOffsetMs = 0L;
 
     public static class Device {
         public final String id, name;
         public final long lastSeen;
-        public final boolean off;      // التطبيق موقوف عن بُعد على هذا الجهاز
+        public boolean off;            // التطبيق موقوف عن بُعد على هذا الجهاز
+        public org.json.JSONObject meta;   // حالة الجهاز كما أبلغ بها (قد تكون null)
+        public long cfgRev;            // إصدار الإعداد الافتراضي المنشور له
+        public long instantTs;         // آخر أمر لحظي منشور له (0 = لا يوجد)
         Device(String id, String name, long lastSeen, boolean off) {
             this.id = id; this.name = name; this.lastSeen = lastSeen; this.off = off;
         }
+    }
+
+    /** حالة هذا الجهاز الصحية وما طبّقه — يقرؤها جهاز ولي الأمر للتأكد من الاستلام. */
+    private static org.json.JSONObject buildMeta(Context c, Prefs p) throws Exception {
+        String nm = p.deviceName();
+        if (nm == null || nm.isEmpty()) nm = Build.MODEL;
+        org.json.JSONObject o = new org.json.JSONObject();
+        o.put("name", nm);
+        o.put("model", Build.MODEL);
+        o.put("lastSeen", System.currentTimeMillis() + Prefs.clockOffsetMs);   // بتوقيت الخادم
+        o.put("off", p.remoteOff());
+        // تأكيد الاستلام
+        o.put("appliedRev", p.lastDefaultRev());
+        o.put("instantTs", p.lastInstantSeen());
+        o.put("unlockSeen", p.lastUnlockSeen());
+        // الصحة
+        o.put("enabled", p.enabled());
+        o.put("svc", MonitorService.isActive());
+        o.put("a11y", KidsAccessibilityService.isRunning());
+        o.put("overlay", android.provider.Settings.canDrawOverlays(c));
+        boolean usage = false, batt = false;
+        try {
+            android.app.AppOpsManager ops = (android.app.AppOpsManager) c.getSystemService(Context.APP_OPS_SERVICE);
+            usage = ops != null && ops.checkOpNoThrow(android.app.AppOpsManager.OPSTR_GET_USAGE_STATS,
+                    android.os.Process.myUid(), c.getPackageName()) == android.app.AppOpsManager.MODE_ALLOWED;
+        } catch (Throwable ignored) { }
+        try {
+            android.os.PowerManager pm = (android.os.PowerManager) c.getSystemService(Context.POWER_SERVICE);
+            batt = pm != null && pm.isIgnoringBatteryOptimizations(c.getPackageName());
+        } catch (Throwable ignored) { }
+        o.put("usage", usage);
+        o.put("batt", batt);
+        String err = MonitorService.lastError;
+        if (err != null) o.put("err", err);
+        try {
+            o.put("ver", c.getPackageManager().getPackageInfo(c.getPackageName(), 0).versionName);
+        } catch (Throwable ignored) { }
+        return o;
     }
     public interface DevicesCallback { void onResult(List<Device> devices, boolean ok); }
     public interface ConfigCallback { void onResult(org.json.JSONObject config, boolean ok); }
@@ -62,18 +105,9 @@ public class RemoteSync {
         final Prefs p = new Prefs(c);
         if (!p.isChild() || !p.syncConfigured()) return;
         final String url = metaNode(p, p.deviceId());
-        String nm = p.deviceName();
-        if (nm == null || nm.isEmpty()) nm = Build.MODEL;
-        final String name = nm;
+        final Context app = c.getApplicationContext();
         new Thread(() -> {
-            try {
-                org.json.JSONObject o = new org.json.JSONObject();
-                o.put("name", name);
-                o.put("model", Build.MODEL);
-                o.put("lastSeen", System.currentTimeMillis());
-                o.put("off", p.remoteOff());
-                write(url, "PUT", o.toString());
-            } catch (Throwable ignored) { }
+            try { write(url, "PUT", buildMeta(app, p).toString()); } catch (Throwable ignored) { }
         }).start();
     }
 
@@ -120,6 +154,7 @@ public class RemoteSync {
             org.json.JSONObject cfgObj = root != null ? root.optJSONObject("config") : null;
             boolean hasData = cfgObj != null;
             boolean applied = false;
+            boolean changed = false;
             if (hasData) {
                 try {
                     org.json.JSONObject o = cfgObj;
@@ -131,6 +166,7 @@ public class RemoteSync {
                         def.remove("unlock");
                         ConfigApplier.applyDefault(p, def);
                         p.setLastDefaultRev(rev);
+                        changed = true;
                     }
                     // ٢) اللحظي: يُنفَّذ مرة واحدة لكل أمر جديد، ضمن مدته
                     org.json.JSONObject ins = o.optJSONObject("instant");
@@ -138,15 +174,18 @@ public class RemoteSync {
                         long ts = ins.optLong("ts", 0L);
                         if (ts > 0 && ts != p.lastInstantSeen()) {
                             p.setLastInstantSeen(ts);
-                            long until = ts + Math.max(1, ins.optInt("dur", 60)) * 60_000L;
+                            // ts بتوقيت الخادم ← حوّله لساعة هذا الجهاز
+                            long until = ts - Prefs.clockOffsetMs + Math.max(1, ins.optInt("dur", 60)) * 60_000L;
                             ConfigApplier.applyInstant(c, p, ins, until, true);
+                            changed = true;
                         }
                     }
                     p.setLastPull(System.currentTimeMillis());
                     applied = true;
-                    maybeRemoteUnlock(c, p, o);
+                    if (maybeRemoteUnlock(c, p, o)) changed = true;
                 } catch (Throwable ignored) { }
             }
+            if (changed) registerDevice(c);   // تأكيد الاستلام فوراً لجهاز ولي الأمر
             final boolean fapplied = applied;
             final boolean fempty = httpOk && !hasData;
             if (showResult) ui.post(() -> Toast.makeText(c,
@@ -157,17 +196,19 @@ public class RemoteSync {
         }).start();
     }
 
-    private static void maybeRemoteUnlock(Context c, Prefs p, org.json.JSONObject o) {
+    /** @return true إن وُجد أمر فتح جديد (نُفّذ أو تُجوهل لقِدَمه). */
+    private static boolean maybeRemoteUnlock(Context c, Prefs p, org.json.JSONObject o) {
         try {
-            if (!p.isChild()) return;
-            long unlock = o.optLong("unlock", 0L);
-            if (unlock <= 0) return;
-            long now = System.currentTimeMillis();
-            if (unlock <= p.lastUnlockSeen()) return;
+            if (!p.isChild()) return false;
+            long unlock = o.optLong("unlock", 0L);   // بتوقيت الخادم
+            if (unlock <= 0) return false;
+            if (unlock == p.lastUnlockSeen()) return false;
             p.setLastUnlockSeen(unlock);
-            if (now - unlock > 15 * 60_000L) return;
+            long serverNow = System.currentTimeMillis() + Prefs.clockOffsetMs;
+            if (serverNow - unlock > 15 * 60_000L) return true;   // قديم: لا يُنفَّذ
             c.startService(new Intent(c, MonitorService.class).setAction(MonitorService.ACTION_REMOTE_UNLOCK));
-        } catch (Throwable ignored) { }
+            return true;
+        } catch (Throwable ignored) { return false; }
     }
 
     // ===== جهاز ولي الأمر =====
@@ -237,7 +278,7 @@ public class RemoteSync {
             org.json.JSONObject ins = new org.json.JSONObject(cfg.toString());
             ins.remove("instant");
             ins.remove("rev");
-            ins.put("ts", System.currentTimeMillis());
+            ins.put("ts", new org.json.JSONObject().put(".sv", "timestamp"));   // توقيت الخادم
             ins.put("dur", Math.max(1, durMin));
             org.json.JSONObject wrap = new org.json.JSONObject();
             wrap.put("instant", ins);
@@ -287,7 +328,7 @@ public class RemoteSync {
         }
         if (!p.syncConfigured()) return;
         final String url = configNode(p, targetId);
-        final String body = "{\"unlock\":" + System.currentTimeMillis() + "}";
+        final String body = "{\"unlock\":{\".sv\":\"timestamp\"}}";   // توقيت الخادم
         new Thread(() -> {
             boolean ok = write(url, "PATCH", body);     // تحديث جزئي عبر override
             if (showResult) ui.post(() -> Toast.makeText(c,
@@ -342,7 +383,17 @@ public class RemoteSync {
                             org.json.JSONObject pw = dev.optJSONObject("power");   // الأمر الأحدث المرسَل
                             if (pw != null && pw.optLong("ts", 0L) > seen) off = !pw.optBoolean("on", true);
                         }
-                        out.add(new Device(id, name, seen, off));
+                        Device d = new Device(id, name, seen, off);
+                        if (dev != null) {
+                            d.meta = dev.optJSONObject("meta");
+                            org.json.JSONObject cf = dev.optJSONObject("config");
+                            if (cf != null) {
+                                d.cfgRev = cf.optLong("rev", 0L);
+                                org.json.JSONObject in2 = cf.optJSONObject("instant");
+                                if (in2 != null) d.instantTs = in2.optLong("ts", 0L);
+                            }
+                        }
+                        out.add(d);
                     }
                 } catch (Throwable ignored) { }
             }
@@ -362,6 +413,11 @@ public class RemoteSync {
             con.setReadTimeout(20000);
             con.setRequestProperty("Accept", "application/json");
             int code = con.getResponseCode();
+            long sd = con.getHeaderFieldDate("Date", 0L);
+            if (sd > 0L) {
+                serverOffsetMs = sd - System.currentTimeMillis();
+                Prefs.clockOffsetMs = serverOffsetMs;
+            }
             if (code < 200 || code >= 300) return new String[]{null, "err"};
             StringBuilder sb = new StringBuilder();
             try (InputStream in = con.getInputStream();

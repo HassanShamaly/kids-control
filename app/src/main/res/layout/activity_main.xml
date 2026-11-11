@@ -59,6 +59,12 @@
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 
+            <TextView android:id="@+id/tv_home_warn"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:visibility="gone" android:textColor="@color/warn" android:textSize="14sp"
+                android:padding="12dp" android:background="@drawable/field_bg" android:layout_marginTop="8dp" />
+            <Button android:id="@+id/btn_home_battery" style="@style/Secondary" android:visibility="gone"
+                android:text="@string/fix_battery" />
             <Button android:id="@+id/btn_home_start" style="@style/Primary" android:text="@string/start_monitor" />
             <Button android:id="@+id/btn_home_stop" style="@style/Secondary" android:text="@string/stop_monitor" />
             <Button android:id="@+id/btn_home_close" style="@style/Danger" android:text="@string/close_app" />

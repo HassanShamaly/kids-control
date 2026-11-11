@@ -301,4 +301,7 @@
     <string name="home_remote_off_sub">لا قيود حالياً. يعيد ولي الأمر التشغيل من جواله.</string>
     <string name="owner_unlock_sub">ضع بصمتك، أو اضغط «الرقم السري»</string>
     <string name="use_pin">الرقم السري</string>
+    <string name="pin_locked_fmt">محاولات خاطئة كثيرة — أعد المحاولة بعد %1$d دقيقة</string>
+    <string name="reset_child_blocked">لا يمكن إعادة ضبط الرقم السري على جهاز الطفل. غيّر الدور من جهاز ولي الأمر أو أعد تثبيت التطبيق.</string>
+    <string name="child_pin_sub">أدخل الرقم السري للتطبيق (ولي الأمر)</string>
 </resources>

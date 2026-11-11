@@ -165,7 +165,7 @@ public class MainActivity extends AppCompatActivity {
                         stopMonitoring();
                         refreshHome();
                     } else {
-                        Toast.makeText(this, R.string.pin_wrong, Toast.LENGTH_LONG).show();
+                        Toast.makeText(this, prefs.pinLocked() ? getString(R.string.pin_locked_fmt, (int) ((prefs.pinLockedSec() + 59) / 60)) : getString(R.string.pin_wrong), Toast.LENGTH_LONG).show();
                     }
                 })
                 .setNeutralButton(R.string.forgot_pin, (d, w) -> startResetPin())
@@ -183,7 +183,7 @@ public class MainActivity extends AppCompatActivity {
                 .setView(in)
                 .setPositiveButton(R.string.ok, (d, w) -> {
                     if (prefs.checkPin(in.getText().toString().trim())) fullClose();
-                    else Toast.makeText(this, R.string.pin_wrong, Toast.LENGTH_LONG).show();
+                    else Toast.makeText(this, prefs.pinLocked() ? getString(R.string.pin_locked_fmt, (int) ((prefs.pinLockedSec() + 59) / 60)) : getString(R.string.pin_wrong), Toast.LENGTH_LONG).show();
                 })
                 .setNegativeButton(R.string.cancel, null)
                 .show();
@@ -268,7 +268,7 @@ public class MainActivity extends AppCompatActivity {
                     if (prefs.checkPin(in.getText().toString().trim())) {
                         requireBiometricThenReveal();
                     } else {
-                        Toast.makeText(this, R.string.pin_wrong, Toast.LENGTH_LONG).show();
+                        Toast.makeText(this, prefs.pinLocked() ? getString(R.string.pin_locked_fmt, (int) ((prefs.pinLockedSec() + 59) / 60)) : getString(R.string.pin_wrong), Toast.LENGTH_LONG).show();
                     }
                 })
                 .setNeutralButton(R.string.forgot_pin, (d, w) -> startResetPin())
@@ -280,6 +280,10 @@ public class MainActivity extends AppCompatActivity {
     private static final int REQ_RESET_PIN = 9101;
 
     private void startResetPin() {
+        if (prefs.isChild()) {   // على جهاز الطفل رمز قفل الجوال معروف للطفل، فلا يُقبل لإعادة الضبط
+            Toast.makeText(this, R.string.reset_child_blocked, Toast.LENGTH_LONG).show();
+            return;
+        }
         android.app.KeyguardManager km =
                 (android.app.KeyguardManager) getSystemService(Context.KEYGUARD_SERVICE);
         if (km == null || !km.isDeviceSecure()) {

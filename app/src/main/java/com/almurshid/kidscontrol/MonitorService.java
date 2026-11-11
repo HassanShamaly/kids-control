@@ -81,6 +81,7 @@ public class MonitorService extends Service {
     private final long[] usedMs = new long[3];
     private int currentCat = AppClassifier.CAT_NONE;
     private long lastPollTs = 0L;
+    private long lastWallTs = 0L, lastElapsedTs = 0L;   // لكشف تغيير ساعة الجوال
     private long lastMonitoredTs = 0L;
     private volatile boolean locked = false;
     private int lockedCat = 0;
@@ -233,6 +234,18 @@ public class MonitorService extends Service {
         long delta = now - lastPollTs;
         if (delta < 0 || delta > 60_000L) delta = POLL_MS;
         lastPollTs = now;
+
+        // حماية من تغيير ساعة الجوال: أي قفزة في الساعة تُزاح بها نهاية الاستراحة، فلا تنتهي مبكراً
+        long el = android.os.SystemClock.elapsedRealtime();
+        if (lastWallTs != 0L) {
+            long jump = (now - lastWallTs) - (el - lastElapsedTs);
+            if (Math.abs(jump) > 30_000L && breakUntil > 0L) {
+                breakUntil += jump;
+                prefs.setBreakUntil(breakUntil);
+            }
+        }
+        lastWallTs = now;
+        lastElapsedTs = el;
 
         // جهاز الطفل: اسحب إعدادات ولي الأمر دورياً وطبّقها
         RemoteSync.pullIfDue(this, 60_000L);
@@ -621,6 +634,7 @@ public class MonitorService extends Service {
 
     private void launchUnlock() {
         if (!locked) return;
+        if (prefs.isChild()) return;   // جهاز الطفل: لا بصمة؛ الفتح بزر «فتح» ثم رقم التطبيق السري
         Intent i = new Intent(this, UnlockActivity.class);
         i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         try { startActivity(i); } catch (Throwable ignored) {}
@@ -658,7 +672,11 @@ public class MonitorService extends Service {
             bu.setVisibility(View.VISIBLE);
             bu.setText(getString(R.string.unlock_btn));
             if (childDevice) {
-                bu.setOnClickListener(v -> launchUnlock());
+                // جهاز الطفل: أزِل الطبقة مؤقتاً ثم اطلب رقم التطبيق السري (لا بصمة ولا رمز الجوال)
+                bu.setOnClickListener(v -> {
+                    if (bgHandler != null) bgHandler.post(this::startOwnerUnlock);
+                    else startOwnerUnlock();
+                });
             } else {
                 // جهازك: أزِل الطبقة أولاً حتى تظهر البصمة/الرقم السري فوق كل شيء (قفل عادي أو استراحة)
                 bu.setOnClickListener(v -> {

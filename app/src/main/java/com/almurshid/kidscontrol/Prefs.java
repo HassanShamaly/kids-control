@@ -130,9 +130,57 @@ public class Prefs {
     public boolean enabled() { return sp.getBoolean(K_ENABLED, false); }
     public int cooldownSec() { return sp.getInt(K_COOLDOWN, 600); } // 10 دقائق افتراضياً
 
-    public String pin()      { return sp.getString(K_PIN, null); }
-    public boolean hasPin()  { return pin() != null && pin().length() >= 4; }
-    public boolean checkPin(String p) { return hasPin() && pin().equals(p); }
+    // الرقم السري يُخزَّن كبصمة SHA-256 مملّحة (والقديم النصّي يُرحَّل عند أول إدخال صحيح)
+    private static final String K_PIN_HASH = "pin_hash", K_PIN_SALT = "pin_salt";
+    private static final String K_PIN_FAILS = "pin_fails", K_PIN_LOCK_UNTIL = "pin_lock_until";
+    private static final int PIN_MAX_FAILS = 5;
+    private static final long PIN_LOCK_MS = 5 * 60_000L;
+
+    private String legacyPin() { return sp.getString(K_PIN, null); }
+    public boolean hasPin() {
+        String l = legacyPin();
+        return sp.getString(K_PIN_HASH, null) != null || (l != null && l.length() >= 4);
+    }
+    private static String hashPin(String salt, String p) {
+        try {
+            java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+            byte[] d = md.digest((salt + ":" + p).getBytes("UTF-8"));
+            StringBuilder sb = new StringBuilder();
+            for (byte b : d) sb.append(String.format(java.util.Locale.US, "%02x", b));
+            return sb.toString();
+        } catch (Exception e) { return null; }
+    }
+    /** ثوانٍ متبقية على انتهاء إيقاف المحاولات (0 = غير موقوف). */
+    public long pinLockedSec() {
+        long rem = sp.getLong(K_PIN_LOCK_UNTIL, 0L) - android.os.SystemClock.elapsedRealtime();
+        if (rem > PIN_LOCK_MS) { sp.edit().putLong(K_PIN_LOCK_UNTIL, 0L).apply(); return 0; } // بعد إعادة تشغيل الجهاز
+        return rem > 0 ? (rem + 999) / 1000 : 0;
+    }
+    public boolean pinLocked() { return pinLockedSec() > 0; }
+    /** يتحقق من الرقم السري؛ 5 محاولات خاطئة توقف الإدخال 5 دقائق. */
+    public boolean checkPin(String p) {
+        if (!hasPin() || p == null || pinLocked()) return false;
+        boolean ok;
+        String h = sp.getString(K_PIN_HASH, null);
+        if (h != null) {
+            ok = h.equals(hashPin(sp.getString(K_PIN_SALT, ""), p));
+        } else {
+            ok = p.equals(legacyPin());
+            if (ok) setPin(p);   // ترحيل للتخزين المشفّر
+        }
+        if (ok) {
+            sp.edit().putInt(K_PIN_FAILS, 0).putLong(K_PIN_LOCK_UNTIL, 0L).apply();
+        } else {
+            int f = sp.getInt(K_PIN_FAILS, 0) + 1;
+            if (f >= PIN_MAX_FAILS) {
+                sp.edit().putInt(K_PIN_FAILS, 0).putLong(K_PIN_LOCK_UNTIL,
+                        android.os.SystemClock.elapsedRealtime() + PIN_LOCK_MS).apply();
+            } else {
+                sp.edit().putInt(K_PIN_FAILS, f).apply();
+            }
+        }
+        return ok;
+    }
 
     public void setYtLimit(int v)   { sp.edit().putInt(K_YT_LIMIT, v).apply(); }
     public void setGameLimit(int v) { sp.edit().putInt(K_GAME_LIMIT, v).apply(); }
@@ -140,7 +188,15 @@ public class Prefs {
     public void setGameOn(boolean v){ sp.edit().putBoolean(K_GAME_ON, v).apply(); }
     public void setEnabled(boolean v){ sp.edit().putBoolean(K_ENABLED, v).apply(); }
     public void setCooldownSec(int v){ sp.edit().putInt(K_COOLDOWN, v).apply(); }
-    public void setPin(String p)    { sp.edit().putString(K_PIN, p).apply(); }
+    public void setPin(String p) {
+        byte[] sb = new byte[16];
+        new java.security.SecureRandom().nextBytes(sb);
+        String salt = android.util.Base64.encodeToString(sb, android.util.Base64.NO_WRAP);
+        String h = hashPin(salt, p);
+        if (h == null) { sp.edit().putString(K_PIN, p).apply(); return; }
+        sp.edit().putString(K_PIN_SALT, salt).putString(K_PIN_HASH, h).remove(K_PIN)
+                .putInt(K_PIN_FAILS, 0).putLong(K_PIN_LOCK_UNTIL, 0L).apply();
+    }
 
     // ===== القوائم =====
     public Set<String> getSet(String key) {

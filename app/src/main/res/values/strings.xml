@@ -124,7 +124,7 @@
 
     <!-- الشاشة الرئيسية -->
     <string name="settings_title">الإعدادات</string>
-    <string name="open_settings">الإعدادات (رقم سري + بصمة)</string>
+    <string name="open_settings">🔑 دخول (الرقم السري)</string>
     <string name="download_latest">تنزيل وتثبيت آخر إصدار</string>
     <string name="upd_checking">جارٍ التحقق من التحديث…</string>
     <string name="settings_accordion_hint">اضغط أي مجموعة لفتحها أو إغلاقها.</string>
@@ -319,4 +319,15 @@
     <string name="st_version">النسخة: %1$s</string>
     <string name="night_screen_label">حد الشاشة العام ليلاً (بالدقائق) — 0 = معطّل</string>
     <string name="night_screen_hint">خلال فترة الليل يُحتسب أي استخدام للجوال في أي تطبيق (بنترست، المتصفح، التصفح…). بعد هذه المدة تظهر استراحة إجبارية بمدة «الاستراحة»، وبعدها لا يُفتح الجوال إلا بالرقم السري أو من جوال ولي الأمر. المكالمات لا تُحتسب.</string>
+    <string name="devices_title">الأجهزة</string>
+    <string name="devices_list_hint">اضغط على جهاز لفتح إعداداته. ⚙ لإعدادات التطبيق على هذا الجوال.</string>
+    <string name="back_devices">‹ رجوع إلى قائمة الأجهزة</string>
+    <string name="app_settings_title">إعدادات التطبيق على هذا الجوال</string>
+    <string name="logout">خروج</string>
+    <string name="self_running">المراقبة تعمل على هذا الجوال</string>
+    <string name="self_stopped">المراقبة متوقفة على هذا الجوال</string>
+    <string name="card_ok">✓ مطبَّق</string>
+    <string name="card_pending">⏳ بانتظار التطبيق</string>
+    <string name="card_warn_fmt">⚠ %1$d تنبيه</string>
+    <string name="card_old">⚠ نسخة قديمة</string>
 </resources>

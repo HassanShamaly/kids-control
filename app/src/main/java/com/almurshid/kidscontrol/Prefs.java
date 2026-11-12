@@ -269,6 +269,13 @@ public class Prefs {
     public void setNightFrom(int v)   { sp.edit().putInt(K_NIGHT_FROM, v).apply(); }
     public void setNightTo(int v)     { sp.edit().putInt(K_NIGHT_TO, v).apply(); }
     public void setNightLimit(int v)  { sp.edit().putInt(K_NIGHT_LIMIT, v).apply(); }
+    // حد الشاشة العام ليلاً: دقائق استخدام الجوال (أي تطبيق) قبل استراحة إجبارية. 0 = معطّل
+    private static final String K_NIGHT_SCREEN = "night_screen_min";
+    private static final String K_NIGHT_SCREEN_USED = "night_screen_used_ms";
+    public int nightScreenMin()            { return sp.getInt(K_NIGHT_SCREEN, 0); }
+    public void setNightScreenMin(int v)   { sp.edit().putInt(K_NIGHT_SCREEN, Math.max(0, v)).apply(); }
+    public long nightScreenUsedMs()        { return sp.getLong(K_NIGHT_SCREEN_USED, 0L); }
+    public void setNightScreenUsedMs(long v){ sp.edit().putLong(K_NIGHT_SCREEN_USED, v).apply(); }
 
     public boolean inNightWindow() {
         if (!nightOn()) return false;
@@ -453,6 +460,7 @@ public class Prefs {
             o.put("relax_on", relaxOn());   o.put("relax_limit", relaxLimit());
             o.put("relax_days", new org.json.JSONArray(relaxDays()));
             o.put("night_on", nightOn());   o.put("night_from", nightFrom()); o.put("night_to", nightTo()); o.put("night_limit", nightLimit());
+            o.put("night_screen", nightScreenMin());
             o.put("break_min", breakMinutes()); o.put("break_thr", breakThreshold());
             o.put("resume_min", resumeMinutes());
             o.put("revert_on", revertOn()); o.put("revert_min", revertMinutes());
@@ -481,6 +489,7 @@ public class Prefs {
         if (o.has("night_from"))  e.putInt(K_NIGHT_FROM, o.optInt("night_from", nightFrom()));
         if (o.has("night_to"))    e.putInt(K_NIGHT_TO, o.optInt("night_to", nightTo()));
         if (o.has("night_limit")) e.putInt(K_NIGHT_LIMIT, o.optInt("night_limit", nightLimit()));
+        if (o.has("night_screen")) e.putInt(K_NIGHT_SCREEN, Math.max(0, o.optInt("night_screen", nightScreenMin())));
         if (o.has("break_min"))   e.putInt(K_BREAK_MIN, o.optInt("break_min", breakMinutes()));
         if (o.has("break_thr"))   e.putInt(K_BREAK_THRESHOLD, o.optInt("break_thr", breakThreshold()));
         if (o.has("resume_min"))  e.putInt(K_RESUME_MIN, o.optInt("resume_min", resumeMinutes()));

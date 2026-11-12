@@ -84,6 +84,7 @@ public class MonitorService extends Service {
     private int currentCat = AppClassifier.CAT_NONE;
     private long lastPollTs = 0L;
     private long lastWallTs = 0L, lastElapsedTs = 0L;   // لكشف تغيير ساعة الجوال
+    private long nightScreenMs = 0L, lastNightSaveTs = 0L; // زمن الشاشة العام ليلاً (أي تطبيق)
     private long lastMonitoredTs = 0L;
     private volatile boolean locked = false;
     private int lockedCat = 0;
@@ -160,6 +161,7 @@ public class MonitorService extends Service {
         lastMonitoredTs = prefs.lastMonitored();
         currentCat = prefs.currentCat();
         periodMs = prefs.periodMs();
+        nightScreenMs = prefs.nightScreenUsedMs();
         sessionMs = prefs.sessionMs();
         unlockCount = prefs.unlockCount();
         breakUntil = prefs.breakUntil();
@@ -311,6 +313,21 @@ public class MonitorService extends Service {
         boolean screenOn = power == null || power.isInteractive();
         boolean deviceLocked = keyguard != null && keyguard.isKeyguardLocked();
         boolean active = screenOn && !deviceLocked;
+
+        // حد الشاشة العام ليلاً: أي استخدام للجوال (أي تطبيق) يُحتسب، وبعد المدة المحددة استراحة إجبارية
+        int nsMin = prefs.nightScreenMin();
+        if (nsMin > 0 && prefs.inNightWindow()) {
+            String f0 = fgA11y != null ? fgA11y : fgUsage;
+            boolean call = f0 != null && (f0.contains("dialer") || f0.contains("incallui") || f0.contains("telecom"));
+            if (active && !call && now > graceUntil) {
+                nightScreenMs += delta;
+                if (now - lastNightSaveTs > 20_000L) { lastNightSaveTs = now; prefs.setNightScreenUsedMs(nightScreenMs); }
+                if (nightScreenMs >= nsMin * 60_000L) { triggerNightBreak(); return; }
+            }
+        } else if (nightScreenMs != 0L) {
+            nightScreenMs = 0L;                 // خرجنا من فترة الليل: يبدأ العدّ من جديد الليلة القادمة
+            prefs.setNightScreenUsedMs(0L);
+        }
 
         Set<String> playing = active ? KidsNotificationListener.playingPackages(this) : null;
         boolean musicActive = am != null && am.isMusicActive();
@@ -527,6 +544,23 @@ public class MonitorService extends Service {
             uiHandler.postDelayed(this::launchUnlock, 700L);  // قفل عادي: اطلب البصمة
             updateNotificationLocked();
         }
+    }
+
+    /** انتهى زمن الشاشة المسموح ليلاً: استراحة إجبارية، وبعدها يلزم فتح ولي الأمر. */
+    private void triggerNightBreak() {
+        long now = System.currentTimeMillis();
+        nightScreenMs = 0L;
+        prefs.setNightScreenUsedMs(0L);
+        locked = true;
+        lockedCat = AppClassifier.CAT_YT;
+        prefs.setLocked(true, lockedCat);
+        breakUntil = now + Math.max(1, prefs.breakMinutes()) * 60_000L;
+        saveState(now, true);
+        pauseMedia();
+        KidsAccessibilityService.goHome();
+        postShowOverlay(lockedCat);
+        lastNotifTs = 0L;
+        updateOverlayBreak(now);
     }
 
     /** فتح عادي (بصمة/رقم سري): فترة جديدة، ويُحسب كتبصيم للمواصلة. */

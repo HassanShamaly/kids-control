@@ -48,7 +48,7 @@ public class MainActivity extends AppCompatActivity {
     private Prefs prefs;
     private boolean authed = false;      // تم فتح قسم الإعدادات
 
-    private EditText etYt, etGame, etCooldown, etNightLimit, etBreakThreshold, etBreakMinutes, etResume, etRevert, etRelaxLimit;
+    private EditText etYt, etGame, etCooldown, etNightLimit, etNightScreen, etBreakThreshold, etBreakMinutes, etResume, etRevert, etRelaxLimit;
     private CheckBox cbYt, cbGame, cbSchedule, cbNight, cbRevert, cbRelax, cbExcludeFb, cbExcludeIg;
     private java.util.Set<String> relaxDays;
     private TextView tvDefaultStatus;
@@ -448,6 +448,8 @@ public class MainActivity extends AppCompatActivity {
         btnNightFrom = findViewById(R.id.btn_night_from);
         btnNightTo = findViewById(R.id.btn_night_to);
         etNightLimit = findViewById(R.id.et_night_limit);
+        etNightScreen = findViewById(R.id.et_night_screen);
+        etNightScreen.setText(String.valueOf(prefs.nightScreenMin()));
         etBreakThreshold = findViewById(R.id.et_break_threshold);
         etBreakMinutes = findViewById(R.id.et_break_minutes);
         cbNight.setChecked(prefs.nightOn());
@@ -541,6 +543,7 @@ public class MainActivity extends AppCompatActivity {
         dst.setNightFrom(nightFrom);
         dst.setNightTo(nightTo);
         dst.setNightLimit(Math.max(1, parseInt(etNightLimit.getText().toString(), 1)));
+        dst.setNightScreenMin(Math.max(0, parseInt(etNightScreen.getText().toString(), 0)));
         dst.setBreakThreshold(Math.max(1, parseInt(etBreakThreshold.getText().toString(), 20)));
         dst.setBreakMinutes(Math.max(1, parseInt(etBreakMinutes.getText().toString(), 60)));
         dst.setResumeMinutes(Math.max(1, parseInt(etResume.getText().toString(), 30)));
@@ -1138,6 +1141,7 @@ public class MainActivity extends AppCompatActivity {
         cbNight.setChecked(src.nightOn());
         nightFrom = src.nightFrom(); nightTo = src.nightTo(); updateNightButtons();
         etNightLimit.setText(String.valueOf(src.nightLimit()));
+        etNightScreen.setText(String.valueOf(src.nightScreenMin()));
         etBreakThreshold.setText(String.valueOf(src.breakThreshold()));
         etBreakMinutes.setText(String.valueOf(src.breakMinutes()));
         etResume.setText(String.valueOf(src.resumeMinutes()));

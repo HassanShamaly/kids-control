@@ -48,6 +48,7 @@ public class AppClassifier {
             "com.facebook.katana", "com.facebook.lite", "video.like", "com.kwai.video",
             "com.kwai.bulldog", "sg.bigo.live", "tv.twitch.android.app", "com.kick.mobile",
             "com.dailymotion.dailymotion", "com.vimeo.android.videoapp",
+            "com.pinterest", "com.pinterest.twa",
             // منصات مشاهدة
             "com.netflix.mediaclient", "net.mbc.shahid", "com.disney.disneyplus",
             "com.amazon.avod.thirdpartyclient", "com.samsung.android.tvplus",

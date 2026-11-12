@@ -224,6 +224,10 @@
                         <Button android:id="@+id/btn_night_to" style="@style/Secondary" android:text="@string/night_to" />
                         <TextView style="@style/Hint" android:text="@string/night_limit_label" />
                         <EditText android:id="@+id/et_night_limit" style="@style/Num" android:hint="1" />
+                        <View style="@style/Divider" />
+                        <TextView style="@style/FieldLabel" android:text="@string/night_screen_label" />
+                        <TextView style="@style/Hint" android:text="@string/night_screen_hint" />
+                        <EditText android:id="@+id/et_night_screen" style="@style/Num" android:hint="0" />
                     </LinearLayout>
                 </androidx.cardview.widget.CardView>
             </LinearLayout>

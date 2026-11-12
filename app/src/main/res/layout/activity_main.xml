@@ -118,6 +118,19 @@
                     android:textColor="@color/text" android:textSize="22sp" android:textStyle="bold"
                     android:gravity="center" android:paddingTop="10dp" android:paddingBottom="4dp" />
                 <TextView android:id="@+id/tv_target_status" style="@style/Hint" />
+                <TextView style="@style/FieldLabel" android:text="@string/current_setting_label" android:paddingTop="8dp" />
+                <TextView android:id="@+id/tv_device_summary" style="@style/Status" />
+                <TextView style="@style/FieldLabel" android:text="@string/actions_label" android:paddingTop="10dp" />
+                <LinearLayout android:id="@+id/ll_actions" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" />
+                <Button android:id="@+id/btn_back_devices2" style="@style/Secondary" android:text="@string/back_devices" />
+            </LinearLayout>
+
+            <!-- ======== شاشة ٢ب: محرّر الإعداد (افتراضي أو لحظي) ======== -->
+            <LinearLayout android:id="@+id/edit_root" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:visibility="gone">
+                <Button android:id="@+id/btn_back_device" style="@style/Secondary" android:text="@string/back_device" />
+                <TextView android:id="@+id/tv_edit_title" android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:textColor="@color/text" android:textSize="20sp" android:textStyle="bold"
+                    android:gravity="center" android:paddingTop="10dp" android:paddingBottom="4dp" />
 
                 <androidx.cardview.widget.CardView android:id="@+id/target_bar" style="@style/Card">
                     <LinearLayout style="@style/CardInner">
@@ -270,7 +283,7 @@
                     android:visibility="gone" />
                 <Button android:id="@+id/btn_remote_resume" style="@style/Secondary" android:text="@string/remote_resume"
                     android:visibility="gone" />
-                <Button android:id="@+id/btn_back_devices2" style="@style/Secondary" android:text="@string/back_devices" />
+                <Button android:id="@+id/btn_back_device2" style="@style/Secondary" android:text="@string/back_device" />
             </LinearLayout>
 
             <!-- ======== شاشة ٣: إعدادات التطبيق على هذا الجهاز (⚙) ======== -->

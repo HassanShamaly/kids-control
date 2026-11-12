@@ -131,6 +131,7 @@ public class MainActivity extends AppCompatActivity {
     private void refreshHome() {
         if (tvHomeStatus == null) return;
         refreshHomeWarnings();
+        if (authed && mScreen == SCREEN_DEVICE) { try { renderDeviceScreen(); } catch (Throwable ignored) { } }
         boolean on = prefs.enabled();
         if (on && prefs.remoteOff()) {                 // موقوف من جوال ولي الأمر
             tvHomeStatus.setText(R.string.home_remote_off);
@@ -889,6 +890,9 @@ public class MainActivity extends AppCompatActivity {
         View.OnClickListener back = v -> { showScreen(SCREEN_DEVICES); refreshTargets(false); };
         findViewById(R.id.btn_back_devices).setOnClickListener(back);
         findViewById(R.id.btn_back_devices2).setOnClickListener(back);
+        View.OnClickListener backDev = v -> { showScreen(SCREEN_DEVICE); renderDeviceScreen(); };
+        findViewById(R.id.btn_back_device).setOnClickListener(backDev);
+        findViewById(R.id.btn_back_device2).setOnClickListener(backDev);
         findViewById(R.id.btn_back_app).setOnClickListener(back);
         findViewById(R.id.btn_logout_app).setOnClickListener(v -> closeSettings());
         findViewById(R.id.btn_update_app).setOnClickListener(v -> UpdateChecker.check(this, true));
@@ -904,35 +908,170 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private static final int SCREEN_DEVICES = 0, SCREEN_DEVICE = 1, SCREEN_APP = 2;
+    private static final int SCREEN_DEVICES = 0, SCREEN_DEVICE = 1, SCREEN_APP = 2, SCREEN_EDIT = 3;
+    private int mScreen = SCREEN_DEVICES;
+    private boolean mDraftReady = false;
 
     /** يعرض إحدى شاشات ما بعد الدخول: قائمة الأجهزة، إعدادات جهاز، أو إعدادات التطبيق. */
     private void showScreen(int s) {
         findViewById(R.id.devices_root).setVisibility(s == SCREEN_DEVICES ? View.VISIBLE : View.GONE);
         findViewById(R.id.device_root).setVisibility(s == SCREEN_DEVICE ? View.VISIBLE : View.GONE);
         findViewById(R.id.app_root).setVisibility(s == SCREEN_APP ? View.VISIBLE : View.GONE);
+        findViewById(R.id.edit_root).setVisibility(s == SCREEN_EDIT ? View.VISIBLE : View.GONE);
+        mScreen = s;
         View sc = findViewById(R.id.settings_root).getParent() instanceof View
                 ? (View) findViewById(R.id.settings_root).getParent().getParent() : null;
         if (sc instanceof android.widget.ScrollView) ((android.widget.ScrollView) sc).scrollTo(0, 0);
         if (s == SCREEN_APP) refreshPermissionStatus();
     }
 
-    /** يفتح شاشة إعدادات جهاز من القائمة ("" = هذا الجوال). */
+    /** يفتح شاشة جهاز من القائمة ("" = هذا الجوال): ملخص إعداده وبطاقات الإجراءات. */
     private void openDevice(String id) {
         RemoteSync.Device d = findTarget(id);
         ((TextView) findViewById(R.id.tv_device_title)).setText(
                 id.isEmpty() ? getString(R.string.target_this_phone) : "👦 " + (d != null ? d.name : id));
-        ((android.widget.RadioButton) findViewById(R.id.rb_type_default)).setChecked(true);
-        for (int box : new int[]{R.id.box_limits, R.id.box_exclude, R.id.box_times, R.id.box_break, R.id.box_auto}) {
-            View bx = findViewById(box);
-            if (bx != null && bx.getVisibility() == View.VISIBLE) {   // اطوِ ما كان مفتوحاً لجهاز سابق
-                View hdr = findViewById(box == R.id.box_limits ? R.id.hdr_limits : box == R.id.box_exclude ? R.id.hdr_exclude
-                        : box == R.id.box_times ? R.id.hdr_times : box == R.id.box_break ? R.id.hdr_break : R.id.hdr_auto);
-                if (hdr != null) hdr.performClick();
-            }
-        }
         showScreen(SCREEN_DEVICE);
         loadTarget(id);
+        renderDeviceScreen();
+    }
+
+    private String targetName() {
+        if (mTarget.isEmpty()) return getString(R.string.target_this_phone);
+        RemoteSync.Device d = findTarget(mTarget);
+        return d != null ? d.name : mTarget;
+    }
+
+    /** يفتح محرّر الإعداد للجهاز الحالي: افتراضي أو لحظي. */
+    private void openEditor(boolean instant) {
+        if (!mDraftReady) { Toast.makeText(this, R.string.wait_loading, Toast.LENGTH_SHORT).show(); return; }
+        loadFieldsFrom(draft);   // ابدأ دائماً من الإعداد المحفوظ، لا من تعديلات سابقة غير مرسلة
+        ((android.widget.RadioButton) findViewById(instant ? R.id.rb_type_instant : R.id.rb_type_default)).setChecked(true);
+        ((TextView) findViewById(R.id.tv_edit_title)).setText(getString(
+                instant ? R.string.edit_title_instant : R.string.edit_title_default, targetName()));
+        int[][] groups = {{R.id.hdr_limits, R.id.box_limits}, {R.id.hdr_exclude, R.id.box_exclude},
+                {R.id.hdr_times, R.id.box_times}, {R.id.hdr_break, R.id.box_break}, {R.id.hdr_auto, R.id.box_auto}};
+        for (int[] g : groups) {   // اطوِ ما كان مفتوحاً، وافتح «المدد» مباشرة
+            View bx = findViewById(g[1]), hdr = findViewById(g[0]);
+            boolean open = bx != null && bx.getVisibility() == View.VISIBLE;
+            boolean want = g[1] == R.id.box_limits;
+            if (hdr != null && open != want) hdr.performClick();
+        }
+        showScreen(SCREEN_EDIT);
+    }
+
+    /** بطاقة «وقت جديد الآن»: إعداد لحظي بحد min دقيقة فوق الإعداد الافتراضي للجهاز. */
+    private void quickGrant(int min) {
+        if (!mDraftReady) { Toast.makeText(this, R.string.wait_loading, Toast.LENGTH_SHORT).show(); return; }
+        org.json.JSONObject cfg = draft.exportConfig();
+        try {
+            cfg.put("yt", min); cfg.put("game", min);
+            cfg.put("yt_on", true); cfg.put("game_on", true);
+        } catch (Exception ignored) { }
+        final int dur = 120;
+        if (mTarget.isEmpty()) {
+            ConfigApplier.applyInstant(this, prefs, cfg, System.currentTimeMillis() + dur * 60_000L, true);
+            Toast.makeText(this, R.string.saved_local_instant, Toast.LENGTH_LONG).show();
+            nudgeService();
+            renderDeviceScreen();
+        } else {
+            RemoteSync.sendInstant(this, mTarget, cfg, dur, true);
+            scheduleAckCheck();
+        }
+    }
+
+    /** ملخص إعداد بلغة مقروءة. full=false لسطر البطاقة في القائمة. */
+    private String summarize(org.json.JSONObject c, boolean full) {
+        if (c == null) return getString(R.string.sum_none);
+        java.util.List<String> parts = new java.util.ArrayList<>();
+        boolean yOn = c.optBoolean("yt_on", true), gOn = c.optBoolean("game_on", true);
+        int y = c.optInt("yt", 30), g = c.optInt("game", 30);
+        if (yOn && gOn && y == g) parts.add(getString(R.string.sum_limit_fmt, y));
+        else parts.add(getString(R.string.sum_limit2_fmt,
+                yOn ? getString(R.string.sum_min_fmt, y) : getString(R.string.sum_nolimit),
+                gOn ? getString(R.string.sum_min_fmt, g) : getString(R.string.sum_nolimit)));
+        if (c.optBoolean("night_on", true)) {
+            int ns = c.optInt("night_screen", 0);
+            parts.add(getString(R.string.sum_night_fmt, hhmm(c.optInt("night_from", 0)), hhmm(c.optInt("night_to", 360)),
+                    c.optInt("night_limit", 1), ns > 0 ? getString(R.string.sum_night_screen_fmt, ns) : ""));
+        }
+        if (c.optBoolean("sched_on", false))
+            parts.add(getString(R.string.sum_sched_fmt, hhmm(c.optInt("sched_from", 480)), hhmm(c.optInt("sched_to", 900))));
+        if (full) {
+            parts.add(getString(R.string.sum_cooldown_fmt, Math.max(1, c.optInt("cooldown", 600) / 60)));
+            parts.add(getString(R.string.sum_break_fmt, c.optInt("break_min", 60)));
+            if (c.optBoolean("relax_on", false)) parts.add(getString(R.string.sum_relax_fmt, c.optInt("relax_limit", 60)));
+            if (c.optBoolean("exc_fb", false)) parts.add(getString(R.string.sum_exc_fb));
+            if (c.optBoolean("exc_ig", false)) parts.add(getString(R.string.sum_exc_ig));
+        }
+        return android.text.TextUtils.join(full ? "\n" : " · ", parts);
+    }
+
+    /** ملخص الإعداد الساري الآن على جهاز ("" = هذا الجوال)، مع بيان اللحظي إن كان سارياً. */
+    private String deviceSummary(String id, boolean full) {
+        if (id.isEmpty()) {
+            boolean ins = prefs.instantUntil() > System.currentTimeMillis();
+            return (ins ? getString(R.string.sum_instant_prefix) + (full ? "\n" : "") : "") + summarize(prefs.exportConfig(), full);
+        }
+        RemoteSync.Device d = findTarget(id);
+        if (d == null || d.cfg == null) return getString(R.string.sum_none);
+        long until = d.meta != null ? d.meta.optLong("instantUntil", 0L) : 0L;
+        org.json.JSONObject ins = d.cfg.optJSONObject("instant");
+        if (ins != null && until > System.currentTimeMillis() + RemoteSync.serverOffsetMs)
+            return getString(R.string.sum_instant_prefix) + (full ? "\n" : "") + summarize(ins, full);
+        return summarize(d.cfg, full);
+    }
+
+    private View actionCard(int title, int sub, final Runnable r) {
+        return actionCard(getString(title), sub == 0 ? "" : getString(sub), r);
+    }
+    private View actionCard(String title, String sub, final Runnable r) {
+        View v = deviceCard(title, sub, "");
+        v.setOnClickListener(x -> r.run());
+        return v;
+    }
+
+    /** يبني شاشة الجهاز: الملخص وبطاقات الإجراءات الجاهزة. */
+    private void renderDeviceScreen() {
+        android.widget.LinearLayout box = findViewById(R.id.ll_actions);
+        TextView sum = findViewById(R.id.tv_device_summary);
+        if (box == null || sum == null) return;
+        sum.setText(deviceSummary(mTarget, true));
+        box.removeAllViews();
+        final boolean self = mTarget.isEmpty();
+        final String id = mTarget;
+        final RemoteSync.Device d = findTarget(id);
+        box.addView(actionCard(R.string.act_grant_1, R.string.act_grant_sub, () -> quickGrant(1)));
+        box.addView(actionCard(getString(R.string.act_grant_fmt, 10), getString(R.string.act_grant_sub), () -> quickGrant(10)));
+        box.addView(actionCard(getString(R.string.act_grant_fmt, 30), getString(R.string.act_grant_sub), () -> quickGrant(30)));
+        if (self) {
+            if (prefs.enabled()) box.addView(actionCard(R.string.act_stop, R.string.act_stop_sub, this::confirmStop));
+            else box.addView(actionCard(R.string.act_resume, R.string.act_resume_sub,
+                    () -> { startMonitoring(); renderDeviceScreen(); }));
+            box.addView(actionCard(R.string.act_close, R.string.act_close_sub, this::confirmFullClose));
+        } else {
+            box.addView(actionCard(R.string.act_unlock, R.string.act_unlock_sub, () -> {
+                RemoteSync.unlockTarget(this, id, true);
+                scheduleAckCheck();
+            }));
+            if (d != null && d.off) {
+                box.addView(actionCard(R.string.act_resume, R.string.act_resume_sub, () -> {
+                    RemoteSync.setPower(this, id, true, true);
+                    markTargetOff(id, false);
+                }));
+            } else {
+                box.addView(actionCard(R.string.act_stop, R.string.act_stop_sub, () ->
+                        new AlertDialog.Builder(this)
+                                .setMessage(getString(R.string.remote_stop_confirm, d != null ? d.name : id))
+                                .setPositiveButton(R.string.remote_stop_yes, (dlg, w) -> {
+                                    RemoteSync.setPower(this, id, false, true);
+                                    markTargetOff(id, true);
+                                })
+                                .setNegativeButton(R.string.cancel, null)
+                                .show()));
+            }
+        }
+        box.addView(actionCard(R.string.act_default, R.string.act_default_sub, () -> openEditor(false)));
+        box.addView(actionCard(R.string.act_instant, R.string.act_instant_sub, () -> openEditor(true)));
     }
 
     /** سطر مختصر لحالة جهاز طفل في بطاقة القائمة. */
@@ -1003,6 +1142,7 @@ public class MainActivity extends AppCompatActivity {
             }
             renderDeviceList();
             updateTargetStatus();
+            if (mScreen == SCREEN_DEVICE) renderDeviceScreen();
             if (showToast && !ok) Toast.makeText(this, R.string.sync_failed, Toast.LENGTH_LONG).show();
         });
     }
@@ -1013,9 +1153,11 @@ public class MainActivity extends AppCompatActivity {
         if (box == null) return;
         box.removeAllViews();
         box.addView(deviceCard(getString(R.string.target_this_phone),
-                getString(prefs.enabled() ? R.string.self_running : R.string.self_stopped), ""));
+                getString(prefs.enabled() ? R.string.self_running : R.string.self_stopped)
+                        + "\n" + deviceSummary("", false), ""));
         for (RemoteSync.Device d : mTargets) {
-            box.addView(deviceCard((d.off ? "⏸ " : "👦 ") + d.name, cardSummary(d), d.id));
+            box.addView(deviceCard((d.off ? "⏸ " : "👦 ") + d.name,
+                    cardSummary(d) + "\n" + deviceSummary(d.id, false), d.id));
         }
         if (mTargets.isEmpty() && prefs.isParent() && prefs.syncConfigured()) {
             TextView tv = new TextView(this);
@@ -1052,6 +1194,7 @@ public class MainActivity extends AppCompatActivity {
         if (draft == null) draft = Prefs.draft(this);
         mTarget = target;
         mLoadedTarget = target;
+        mDraftReady = false;
         final TextView status = findViewById(R.id.tv_target_status);
         final boolean self = target.isEmpty();
         updateTargetActions();
@@ -1064,6 +1207,7 @@ public class MainActivity extends AppCompatActivity {
             draft.clearAll();
             draft.applyConfig(ConfigApplier.editableDefault(prefs));
             loadFieldsFrom(draft);
+            mDraftReady = true;
             long u = prefs.instantUntil();
             if (status != null) status.setText(u > System.currentTimeMillis()
                     ? getString(R.string.target_status_instant_active, hhmmTs(u))
@@ -1076,6 +1220,7 @@ public class MainActivity extends AppCompatActivity {
             draft.clearAll();
             if (config != null) draft.applyConfig(config);  // جهاز لم يُضبط بعد ← القيم الافتراضية
             loadFieldsFrom(draft);
+            mDraftReady = ok;
             if (status != null && !ok) status.setText(R.string.sync_failed);
             else updateTargetStatus();
         });
@@ -1112,7 +1257,7 @@ public class MainActivity extends AppCompatActivity {
 
     /** أزرار الفتح والإيقاف والتشغيل عن بُعد: تظهر لولي الأمر عند اختيار جهاز طفل فقط. */
     private void updateTargetActions() {
-        int v = (!prefs.isChild() && !mTarget.isEmpty()) ? View.VISIBLE : View.GONE;
+        int v = View.GONE;   // استُبدلت ببطاقات الإجراءات في شاشة الجهاز
         for (int id : new int[]{R.id.btn_remote_unlock, R.id.btn_remote_stop, R.id.btn_remote_resume}) {
             View b = findViewById(id);
             if (b != null) b.setVisibility(v);
@@ -1126,6 +1271,7 @@ public class MainActivity extends AppCompatActivity {
             if (d.id.equals(id)) d.off = off;
         }
         renderDeviceList();
+        if (mScreen == SCREEN_DEVICE) renderDeviceScreen();
         TextView status = findViewById(R.id.tv_target_status);
         RemoteSync.Device d = findTarget(id);
         if (status != null && id.equals(mTarget)) {

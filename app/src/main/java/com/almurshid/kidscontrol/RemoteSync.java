@@ -38,6 +38,7 @@ public class RemoteSync {
         public org.json.JSONObject meta;   // حالة الجهاز كما أبلغ بها (قد تكون null)
         public long cfgRev;            // إصدار الإعداد الافتراضي المنشور له
         public long instantTs;         // آخر أمر لحظي منشور له (0 = لا يوجد)
+        public org.json.JSONObject cfg; // الإعداد المنشور له (قد يكون null)
         Device(String id, String name, long lastSeen, boolean off) {
             this.id = id; this.name = name; this.lastSeen = lastSeen; this.off = off;
         }
@@ -56,6 +57,8 @@ public class RemoteSync {
         o.put("appliedRev", p.lastDefaultRev());
         o.put("instantTs", p.lastInstantSeen());
         o.put("unlockSeen", p.lastUnlockSeen());
+        long iu = p.instantUntil();
+        o.put("instantUntil", iu > System.currentTimeMillis() ? iu + Prefs.clockOffsetMs : 0L);   // بتوقيت الخادم
         // الصحة
         o.put("enabled", p.enabled());
         o.put("svc", MonitorService.isActive());
@@ -388,6 +391,7 @@ public class RemoteSync {
                             d.meta = dev.optJSONObject("meta");
                             org.json.JSONObject cf = dev.optJSONObject("config");
                             if (cf != null) {
+                                d.cfg = cf;
                                 d.cfgRev = cf.optLong("rev", 0L);
                                 org.json.JSONObject in2 = cf.optJSONObject("instant");
                                 if (in2 != null) d.instantTs = in2.optLong("ts", 0L);

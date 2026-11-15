@@ -45,8 +45,8 @@
     <!-- القفل -->
     <string name="lock_youtube">انتهى وقت مشاهدة الفيديو</string>
     <string name="lock_games">انتهى وقت اللعب</string>
-    <string name="lock_sub">الشاشة مقفلة. يلزم بصمة ولي الأمر للمتابعة.</string>
-    <string name="unlock_btn">فتح بالبصمة</string>
+    <string name="lock_sub">الشاشة مقفلة. يلزم الرقم السري لولي الأمر للمتابعة.</string>
+    <string name="unlock_btn">🔢 فتح بالرقم السري</string>
     <string name="unlock_title">فتح القفل</string>
     <string name="unlock_sub">ضع بصمة ولي الأمر للسماح بالمتابعة</string>
     <string name="biometric_unavailable">البصمة غير متاحة على هذا الجهاز</string>
@@ -365,4 +365,6 @@
     <string name="sum_exc_ig">استثناء إنستاجرام</string>
     <string name="sum_instant_prefix">⚡ لحظي سارٍ: </string>
     <string name="sum_none">لم يُضبط بعد (يعمل بإعداده المحلي)</string>
+    <string name="pin_pad_hint">أدخل الرقم السري ثم ✓</string>
+    <string name="pin_none_set">لم يُضبط رقم سري — افتح التطبيق واضبطه أولاً</string>
 </resources>

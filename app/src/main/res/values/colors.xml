@@ -10,6 +10,6 @@
     <color name="accent2">#3B82F6</color>
     <color name="danger">#D9534F</color>
     <color name="warn">#E0A106</color>
-    <color name="lock_bg">#E6000000</color>
+    <color name="lock_bg">#FF0B0F14</color>
     <color name="divider">#27344F</color>
 </resources>

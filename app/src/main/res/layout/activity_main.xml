@@ -277,6 +277,8 @@
 
 
                 <Button android:id="@+id/btn_save" style="@style/Primary" android:text="@string/save_send_target" />
+                <TextView style="@style/FieldLabel" android:text="@string/device_controls_label" android:paddingTop="14dp" />
+                <LinearLayout android:id="@+id/ll_edit_actions" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" />
                 <Button android:id="@+id/btn_remote_unlock" style="@style/Danger" android:text="@string/remote_unlock_target"
                     android:visibility="gone" />
                 <Button android:id="@+id/btn_remote_stop" style="@style/Secondary" android:text="@string/remote_stop"

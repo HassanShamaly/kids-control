@@ -96,7 +96,7 @@ public class MonitorService extends Service {
     private long sessionMs = 0L;     // زمن متواصل منذ آخر استراحة/تصفير
     private int unlockCount = 0;     // عدد التبصيمات للمواصلة في الجلسة
     private long breakUntil = 0L;    // نهاية الاستراحة الإجبارية (0 = لا استراحة)
-    private long overlaySuppressUntil = 0L; // إخفاء الطبقة مؤقتاً أثناء إدخال الرقم
+    private long overlaySuppressUntil = 0L; // لم يعد يُضبط أبداً: الطبقة لا تُخفى أثناء القفل
 
     private String lastFg = null;
     private long lastEventQueryTs = 0L;
@@ -202,10 +202,7 @@ public class MonitorService extends Service {
             return START_NOT_STICKY;
         }
         if (ACTION_SUPPRESS_OVERLAY.equals(action)) {
-            if (bgHandler != null) bgHandler.post(() -> {
-                overlaySuppressUntil = System.currentTimeMillis() + 25_000L;
-                postRemoveOverlay();
-            });
+            // أُلغي: إخفاء طبقة القفل مؤقتاً كان ثغرة (إلغاء/رجوع = وقت مجاني)
             return START_STICKY;
         }
         if (ACTION_RESHOW_OVERLAY.equals(action)) {
@@ -213,7 +210,7 @@ public class MonitorService extends Service {
             return START_STICKY;
         }
         if (ACTION_EMERGENCY.equals(action)) {
-            if (bgHandler != null) bgHandler.post(this::startEmergencyUnlock);
+            uiHandler.post(this::openPinPanel);
             return START_STICKY;
         }
         if (ACTION_REMOTE_UNLOCK.equals(action)) {
@@ -541,7 +538,6 @@ public class MonitorService extends Service {
         if (breakUntil > now) {
             updateOverlayBreak(now);          // استراحة: لا بصمة تلقائية
         } else {
-            uiHandler.postDelayed(this::launchUnlock, 700L);  // قفل عادي: اطلب البصمة
             updateNotificationLocked();
         }
     }
@@ -599,7 +595,6 @@ public class MonitorService extends Service {
         // أعِد بناء الطبقة كقفل عادي (بزر فتح بالبصمة) واطلب البصمة
         uiHandler.post(() -> { removeOverlay(); });
         postShowOverlay(lockedCat);
-        uiHandler.postDelayed(this::launchUnlock, 700L);
         lastNotifTs = 0L;
         updateNotificationLocked();
     }
@@ -673,13 +668,6 @@ public class MonitorService extends Service {
         focusReq = null;
     }
 
-    private void launchUnlock() {
-        if (!locked) return;
-        if (prefs.isChild()) return;   // جهاز الطفل: لا بصمة؛ الفتح بزر «فتح» ثم رقم التطبيق السري
-        Intent i = new Intent(this, UnlockActivity.class);
-        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-        try { startActivity(i); } catch (Throwable ignored) {}
-    }
 
     // ================= الطبقة (الخيط الرئيسي فقط) =================
     private void postShowOverlay(int cat) {
@@ -703,28 +691,18 @@ public class MonitorService extends Service {
         android.widget.Button bu = overlay.findViewById(R.id.btn_unlock);
         View sub = overlay.findViewById(R.id.lock_sub);
         // على جهاز الطفل لا مخرج محلي أثناء الاستراحة (الطوارئ من جوال ولي الأمر).
-        // على جهازك (ولي الأمر/غير مُدار) يبقى زر الفتح متاحاً دائماً ببصمتك.
+        // على جهازك (ولي الأمر/غير مُدار) يبقى زر الفتح متاحاً دائماً بالرقم السري.
         boolean childDevice = prefs.isChild();
         if (onBreak && childDevice) {
-            // أثناء الاستراحة: عدّاد فقط بلا زر، ليظن الطفل ألا حلّ. الطوارئ بالإيماءة السرّية.
+            // أثناء الاستراحة: عدّاد فقط بلا زر. الفتح من جوال ولي الأمر فقط.
             bu.setVisibility(View.GONE);
             if (sub != null) ((TextView) sub).setText(R.string.break_sub);
         } else {
             bu.setVisibility(View.VISIBLE);
             bu.setText(getString(R.string.unlock_btn));
-            if (childDevice) {
-                // جهاز الطفل: أزِل الطبقة مؤقتاً ثم اطلب رقم التطبيق السري (لا بصمة ولا رمز الجوال)
-                bu.setOnClickListener(v -> {
-                    if (bgHandler != null) bgHandler.post(this::startOwnerUnlock);
-                    else startOwnerUnlock();
-                });
-            } else {
-                // جهازك: أزِل الطبقة أولاً حتى تظهر البصمة/الرقم السري فوق كل شيء (قفل عادي أو استراحة)
-                bu.setOnClickListener(v -> {
-                    if (bgHandler != null) bgHandler.post(this::startOwnerUnlock);
-                    else startOwnerUnlock();
-                });
-            }
+            // الفتح يتم داخل طبقة القفل نفسها (لوحة أرقام) — الطبقة لا تُزال أبداً قبل
+            // إدخال الرقم السري الصحيح، فلا بصمة ولا نوافذ نظام يمكن إلغاؤها.
+            bu.setOnClickListener(v -> openPinPanel());
             if (sub != null) ((TextView) sub).setText(R.string.lock_sub);
         }
 
@@ -737,34 +715,95 @@ public class MonitorService extends Service {
                         | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
                 PixelFormat.OPAQUE);
         lp.gravity = Gravity.CENTER;
+        setupPinPanel();
         try { wm.addView(overlay, lp); } catch (Throwable t) { overlay = null; }
     }
 
-    /**
-     * فتح القفل على جهاز ولي الأمر: تُزال الطبقة مؤقتاً (60 ث) ثم تُطلب بصمتك،
-     * مع زر «الرقم السري» كبديل. الإلغاء يعيد الطبقة فوراً.
-     */
-    private void startOwnerUnlock() {
-        overlaySuppressUntil = System.currentTimeMillis() + 60_000L;
-        postRemoveOverlay();
-        uiHandler.postDelayed(() -> {
-            Intent u = new Intent(this, UnlockActivity.class)
-                    .putExtra("owner", true)
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-            try { startActivity(u); } catch (Throwable ignored) { }
-        }, 250L);
+    // ================= لوحة الرقم السري داخل طبقة القفل (الخيط الرئيسي) =================
+    private final StringBuilder pinBuf = new StringBuilder();
+
+    private void setupPinPanel() {
+        if (overlay == null) return;
+        pinBuf.setLength(0);
+        int[] ids = { R.id.k_0, R.id.k_1, R.id.k_2, R.id.k_3, R.id.k_4,
+                      R.id.k_5, R.id.k_6, R.id.k_7, R.id.k_8, R.id.k_9 };
+        for (int d = 0; d < ids.length; d++) {
+            final char ch = (char) ('0' + d);
+            View k = overlay.findViewById(ids[d]);
+            if (k != null) k.setOnClickListener(v -> {
+                if (pinBuf.length() < 12) pinBuf.append(ch);
+                setPinError(null);
+                renderPinDots();
+            });
+        }
+        View del = overlay.findViewById(R.id.k_del);
+        if (del != null) {
+            del.setOnClickListener(v -> {
+                if (pinBuf.length() > 0) pinBuf.setLength(pinBuf.length() - 1);
+                renderPinDots();
+            });
+            del.setOnLongClickListener(v -> { pinBuf.setLength(0); renderPinDots(); return true; });
+        }
+        View ok = overlay.findViewById(R.id.k_ok);
+        if (ok != null) ok.setOnClickListener(v -> submitPin());
     }
 
-    /** مدخل الطوارئ (إيماءة 5 ضغطات أو الإشعار): يُزيل الطبقة ثم يطلب الرقم السري فوق كل شيء. */
-    private void startEmergencyUnlock() {
-        overlaySuppressUntil = System.currentTimeMillis() + 60_000L;
-        postRemoveOverlay();
-        uiHandler.postDelayed(() -> {
-            Intent u = new Intent(this, UnlockActivity.class)
-                    .putExtra("emergency", true)
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-            try { startActivity(u); } catch (Throwable ignored) { }
-        }, 250L);
+    /** يُظهر لوحة الأرقام داخل الطبقة (بدون إزالة الطبقة). */
+    private void openPinPanel() {
+        if (overlay == null) return;
+        boolean onBreak = breakUntil > System.currentTimeMillis();
+        if (onBreak && prefs.isChild()) return;   // جهاز الطفل أثناء الاستراحة: من جوال ولي الأمر فقط
+        View panel = overlay.findViewById(R.id.pin_panel);
+        if (panel == null) return;
+        panel.setVisibility(View.VISIBLE);
+        View bu = overlay.findViewById(R.id.btn_unlock);
+        if (bu != null) bu.setVisibility(View.GONE);
+        View icon = overlay.findViewById(R.id.lock_icon);
+        if (icon != null) icon.setVisibility(View.GONE);
+        pinBuf.setLength(0);
+        renderPinDots();
+        if (prefs.pinLocked()) setPinError(getString(R.string.pin_locked_fmt, (int) ((prefs.pinLockedSec() + 59) / 60)));
+        else if (prefs.isChild() && !prefs.hasPin()) setPinError(getString(R.string.pin_none_set));
+        else setPinError(getString(R.string.pin_pad_hint));
+    }
+
+    private void renderPinDots() {
+        if (overlay == null) return;
+        TextView dots = overlay.findViewById(R.id.pin_dots);
+        if (dots == null) return;
+        StringBuilder b = new StringBuilder();
+        for (int i = 0; i < pinBuf.length(); i++) b.append('●');
+        dots.setText(b.toString());
+    }
+
+    private void setPinError(String msg) {
+        if (overlay == null) return;
+        TextView e = overlay.findViewById(R.id.pin_err);
+        if (e != null) e.setText(msg == null ? "" : msg);
+    }
+
+    private void submitPin() {
+        final String pin = pinBuf.toString();
+        pinBuf.setLength(0);
+        renderPinDots();
+        final boolean child = prefs.isChild();
+        final boolean onBreak = breakUntil > System.currentTimeMillis();
+        if (onBreak && child) return;
+        if (prefs.pinLocked()) {
+            setPinError(getString(R.string.pin_locked_fmt, (int) ((prefs.pinLockedSec() + 59) / 60)));
+            return;
+        }
+        boolean okPin;
+        if (!prefs.hasPin()) okPin = !child;           // جهازك بلا رقم سري: لا حماية (كما كان)
+        else okPin = !pin.isEmpty() && prefs.checkPin(pin);
+        if (!okPin) {
+            setPinError(prefs.pinLocked()
+                    ? getString(R.string.pin_locked_fmt, (int) ((prefs.pinLockedSec() + 59) / 60))
+                    : getString(R.string.pin_wrong));
+            return;
+        }
+        // صحيح: جهازك → ينهي القفل أو الاستراحة بجلسة جديدة؛ جهاز الطفل → فتح عادي
+        if (bgHandler != null) bgHandler.post(() -> { if (child) onUnlocked(); else endBreak(); });
     }
 
     private void removeOverlay() {

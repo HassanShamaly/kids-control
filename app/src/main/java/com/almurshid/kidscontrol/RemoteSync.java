@@ -175,7 +175,18 @@ public class RemoteSync {
                     org.json.JSONObject ins = o.optJSONObject("instant");
                     if (ins != null && p.isChild()) {
                         long ts = ins.optLong("ts", 0L);
-                        if (ts > 0 && ts != p.lastInstantSeen()) {
+                        if (ts > 0 && ts != p.lastInstantSeen() && ins.optBoolean("block", false)) {
+                            // منع فوري (لحظي = 0): يُنفَّذ فقط إن كان حديثاً
+                            p.setLastInstantSeen(ts);
+                            long serverNow = System.currentTimeMillis() + Prefs.clockOffsetMs;
+                            if (serverNow - ts < 15 * 60_000L) {
+                                try {
+                                    c.startService(new Intent(c, MonitorService.class)
+                                            .setAction(MonitorService.ACTION_FORCE_BREAK));
+                                } catch (Throwable ignored) { }
+                            }
+                            changed = true;
+                        } else if (ts > 0 && ts != p.lastInstantSeen()) {
                             p.setLastInstantSeen(ts);
                             // ts بتوقيت الخادم ← حوّله لساعة هذا الجهاز
                             long until = ts - Prefs.clockOffsetMs + Math.max(1, ins.optInt("dur", 60)) * 60_000L;

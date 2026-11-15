@@ -264,7 +264,7 @@ public class MainActivity extends AppCompatActivity {
                         promptCreatePin();
                     } else {
                         prefs.setPin(p);
-                        if (!authed) requireBiometricThenReveal();
+                        if (!authed) reveal();
                         else Toast.makeText(this, R.string.saved, Toast.LENGTH_SHORT).show();
                     }
                 })
@@ -274,19 +274,37 @@ public class MainActivity extends AppCompatActivity {
 
     private void promptPin() {
         final EditText in = pinInput();
-        new AlertDialog.Builder(this)
+        AlertDialog dlg = new AlertDialog.Builder(this)
                 .setTitle(R.string.enter_pin_title)
                 .setView(in)
                 .setPositiveButton(R.string.ok, (d, w) -> {
                     if (prefs.checkPin(in.getText().toString().trim())) {
-                        requireBiometricThenReveal();
+                        reveal();   // الرقم السري يكفي — بلا بصمة
                     } else {
                         Toast.makeText(this, prefs.pinLocked() ? getString(R.string.pin_locked_fmt, (int) ((prefs.pinLockedSec() + 59) / 60)) : getString(R.string.pin_wrong), Toast.LENGTH_LONG).show();
                     }
                 })
                 .setNeutralButton(R.string.forgot_pin, (d, w) -> startResetPin())
                 .setNegativeButton(R.string.cancel, null)
-                .show();
+                .create();
+        showWithKeyboard(dlg, in);
+    }
+
+    /** يعرض النافذة ويفتح لوحة الأرقام مباشرة، وزر «تم» في اللوحة يضغط موافق. */
+    private void showWithKeyboard(final AlertDialog dlg, final EditText in) {
+        if (dlg.getWindow() != null)
+            dlg.getWindow().setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
+        in.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_DONE);
+        in.setOnEditorActionListener((v, actionId, ev) -> {
+            if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_DONE) {
+                android.widget.Button ok = dlg.getButton(AlertDialog.BUTTON_POSITIVE);
+                if (ok != null) ok.performClick();
+                return true;
+            }
+            return false;
+        });
+        dlg.show();
+        in.requestFocus();
     }
 
     // ===== استرجاع الرقم السري عبر قفل الجهاز =====
@@ -348,43 +366,6 @@ public class MainActivity extends AppCompatActivity {
         int pad = (int) (16 * getResources().getDisplayMetrics().density);
         in.setPadding(pad, pad, pad, pad);
         return in;
-    }
-
-    private void requireBiometricThenReveal() {
-        BiometricManager bm = BiometricManager.from(this);
-        int allowed = BiometricManager.Authenticators.BIOMETRIC_STRONG
-                | BiometricManager.Authenticators.BIOMETRIC_WEAK;
-        if (bm.canAuthenticate(allowed) != BiometricManager.BIOMETRIC_SUCCESS) {
-            allowed = BiometricManager.Authenticators.BIOMETRIC_WEAK
-                    | BiometricManager.Authenticators.DEVICE_CREDENTIAL;
-        }
-
-        BiometricPrompt prompt = new BiometricPrompt(this,
-                ContextCompat.getMainExecutor(this),
-                new BiometricPrompt.AuthenticationCallback() {
-                    @Override public void onAuthenticationSucceeded(@NonNull BiometricPrompt.AuthenticationResult r) {
-                        reveal();
-                    }
-                    @Override public void onAuthenticationError(int code, @NonNull CharSequence err) {
-                        Toast.makeText(MainActivity.this, R.string.auth_failed, Toast.LENGTH_LONG).show();
-                        // تبقى الشاشة الرئيسية؛ لا يُفتح قسم الإعدادات
-                    }
-                });
-
-        BiometricPrompt.PromptInfo.Builder pb = new BiometricPrompt.PromptInfo.Builder()
-                .setTitle(getString(R.string.gate_title))
-                .setSubtitle(getString(R.string.gate_sub))
-                .setAllowedAuthenticators(allowed);
-        if ((allowed & BiometricManager.Authenticators.DEVICE_CREDENTIAL) == 0) {
-            pb.setNegativeButtonText(getString(R.string.cancel));
-        }
-
-        try {
-            prompt.authenticate(pb.build());
-        } catch (Throwable t) {
-            // لا بصمة متاحة إطلاقاً: نكتفي بالرقم السري
-            reveal();
-        }
     }
 
     // ===== الإعدادات بعد التحقق =====
@@ -945,7 +926,11 @@ public class MainActivity extends AppCompatActivity {
     private void openEditor(boolean instant) {
         if (!mDraftReady) { Toast.makeText(this, R.string.wait_loading, Toast.LENGTH_SHORT).show(); return; }
         loadFieldsFrom(draft);   // ابدأ دائماً من الإعداد المحفوظ، لا من تعديلات سابقة غير مرسلة
-        ((android.widget.RadioButton) findViewById(instant ? R.id.rb_type_instant : R.id.rb_type_default)).setChecked(true);
+        instant = false;   // المحرّر صار للإعداد الافتراضي فقط؛ اللحظي = خانة مدة واحدة
+        ((android.widget.RadioButton) findViewById(R.id.rb_type_default)).setChecked(true);
+        View tb = findViewById(R.id.target_bar);
+        if (tb != null) tb.setVisibility(View.GONE);
+        renderEditActions();
         ((TextView) findViewById(R.id.tv_edit_title)).setText(getString(
                 instant ? R.string.edit_title_instant : R.string.edit_title_default, targetName()));
         int[][] groups = {{R.id.hdr_limits, R.id.box_limits}, {R.id.hdr_exclude, R.id.box_exclude},
@@ -962,12 +947,13 @@ public class MainActivity extends AppCompatActivity {
     /** بطاقة «وقت جديد الآن»: إعداد لحظي بحد min دقيقة فوق الإعداد الافتراضي للجهاز. */
     private void quickGrant(int min) {
         if (!mDraftReady) { Toast.makeText(this, R.string.wait_loading, Toast.LENGTH_SHORT).show(); return; }
+        if (min <= 0) { blockNow(); return; }
         org.json.JSONObject cfg = draft.exportConfig();
         try {
             cfg.put("yt", min); cfg.put("game", min);
             cfg.put("yt_on", true); cfg.put("game_on", true);
         } catch (Exception ignored) { }
-        final int dur = 120;
+        final int dur = Math.max(120, min * 2);   // ينتهي غالباً قبل ذلك: عند انتهاء الدقائق يعود الافتراضي
         if (mTarget.isEmpty()) {
             ConfigApplier.applyInstant(this, prefs, cfg, System.currentTimeMillis() + dur * 60_000L, true);
             Toast.makeText(this, R.string.saved_local_instant, Toast.LENGTH_LONG).show();
@@ -977,6 +963,22 @@ public class MainActivity extends AppCompatActivity {
             RemoteSync.sendInstant(this, mTarget, cfg, dur, true);
             scheduleAckCheck();
         }
+    }
+
+    /** لحظي = 0: منع استخدام الجوال الآن (استراحة بمدة الإعداد الافتراضي)، ثم يعود الافتراضي. */
+    private void blockNow() {
+        if (mTarget.isEmpty()) {
+            if (!prefs.enabled()) { Toast.makeText(this, R.string.block_need_on, Toast.LENGTH_LONG).show(); return; }
+            try {
+                startService(new Intent(this, MonitorService.class).setAction(MonitorService.ACTION_FORCE_BREAK));
+            } catch (Throwable ignored) { }
+            Toast.makeText(this, R.string.block_local_done, Toast.LENGTH_LONG).show();
+            return;
+        }
+        org.json.JSONObject cfg = draft.exportConfig();
+        try { cfg.put("block", true); } catch (Exception ignored) { }
+        RemoteSync.sendInstant(this, mTarget, cfg, 1, true);
+        scheduleAckCheck();
     }
 
     /** ملخص إعداد بلغة مقروءة. full=false لسطر البطاقة في القائمة. */
@@ -1040,38 +1042,63 @@ public class MainActivity extends AppCompatActivity {
         final boolean self = mTarget.isEmpty();
         final String id = mTarget;
         final RemoteSync.Device d = findTarget(id);
-        box.addView(actionCard(R.string.act_grant_1, R.string.act_grant_sub, () -> quickGrant(1)));
-        box.addView(actionCard(getString(R.string.act_grant_fmt, 10), getString(R.string.act_grant_sub), () -> quickGrant(10)));
-        box.addView(actionCard(getString(R.string.act_grant_fmt, 30), getString(R.string.act_grant_sub), () -> quickGrant(30)));
+        box.addView(actionCard(R.string.act_default, R.string.act_default_sub, () -> openEditor(false)));
+        box.addView(actionCard(R.string.act_instant, R.string.act_instant_sub, this::promptInstant));
+    }
+
+    /** أزرار التحكم بالجهاز (إيقاف/تشغيل المراقبة، إغلاق التطبيق) — ضمن شاشة الإعداد الافتراضي. */
+    private void renderEditActions() {
+        android.widget.LinearLayout box = findViewById(R.id.ll_edit_actions);
+        if (box == null) return;
+        box.removeAllViews();
+        final boolean self = mTarget.isEmpty();
+        final String id = mTarget;
+        final RemoteSync.Device d = findTarget(id);
         if (self) {
             if (prefs.enabled()) box.addView(actionCard(R.string.act_stop, R.string.act_stop_sub, this::confirmStop));
             else box.addView(actionCard(R.string.act_resume, R.string.act_resume_sub,
-                    () -> { startMonitoring(); renderDeviceScreen(); }));
+                    () -> { startMonitoring(); renderEditActions(); }));
             box.addView(actionCard(R.string.act_close, R.string.act_close_sub, this::confirmFullClose));
-        } else {
-            box.addView(actionCard(R.string.act_unlock, R.string.act_unlock_sub, () -> {
-                RemoteSync.unlockTarget(this, id, true);
-                scheduleAckCheck();
+        } else if (d != null && d.off) {
+            box.addView(actionCard(R.string.act_resume, R.string.act_resume_sub, () -> {
+                RemoteSync.setPower(this, id, true, true);
+                markTargetOff(id, false);
             }));
-            if (d != null && d.off) {
-                box.addView(actionCard(R.string.act_resume, R.string.act_resume_sub, () -> {
-                    RemoteSync.setPower(this, id, true, true);
-                    markTargetOff(id, false);
-                }));
-            } else {
-                box.addView(actionCard(R.string.act_stop, R.string.act_stop_sub, () ->
-                        new AlertDialog.Builder(this)
-                                .setMessage(getString(R.string.remote_stop_confirm, d != null ? d.name : id))
-                                .setPositiveButton(R.string.remote_stop_yes, (dlg, w) -> {
-                                    RemoteSync.setPower(this, id, false, true);
-                                    markTargetOff(id, true);
-                                })
-                                .setNegativeButton(R.string.cancel, null)
-                                .show()));
-            }
+        } else {
+            box.addView(actionCard(R.string.act_stop, R.string.act_stop_sub, () ->
+                    new AlertDialog.Builder(this)
+                            .setMessage(getString(R.string.remote_stop_confirm, d != null ? d.name : id))
+                            .setPositiveButton(R.string.remote_stop_yes, (dlg, w) -> {
+                                RemoteSync.setPower(this, id, false, true);
+                                markTargetOff(id, true);
+                            })
+                            .setNegativeButton(R.string.cancel, null)
+                            .show()));
         }
-        box.addView(actionCard(R.string.act_default, R.string.act_default_sub, () -> openEditor(false)));
-        box.addView(actionCard(R.string.act_instant, R.string.act_instant_sub, () -> openEditor(true)));
+    }
+
+    /** الإعداد اللحظي: خانة واحدة للمدة بالدقائق ثم إرسال. 0 = منع الجوال الآن. */
+    private void promptInstant() {
+        if (!mDraftReady) { Toast.makeText(this, R.string.wait_loading, Toast.LENGTH_SHORT).show(); return; }
+        final EditText in = new EditText(this);
+        in.setInputType(InputType.TYPE_CLASS_NUMBER);
+        in.setHint("0 – 600");
+        in.setTextSize(22f);
+        in.setGravity(android.view.Gravity.CENTER);
+        int pad = (int) (16 * getResources().getDisplayMetrics().density);
+        in.setPadding(pad, pad, pad, pad);
+        AlertDialog dlg = new AlertDialog.Builder(this)
+                .setTitle(getString(R.string.instant_dialog_title, targetName()))
+                .setMessage(R.string.instant_dialog_msg)
+                .setView(in)
+                .setPositiveButton(R.string.instant_send, (x, w) -> {
+                    String t = in.getText().toString().trim();
+                    if (t.isEmpty()) { Toast.makeText(this, R.string.instant_need_min, Toast.LENGTH_SHORT).show(); return; }
+                    quickGrant(Math.min(600, Math.max(0, parseInt(t, 0))));
+                })
+                .setNegativeButton(R.string.cancel, null)
+                .create();
+        showWithKeyboard(dlg, in);
     }
 
     /** سطر مختصر لحالة جهاز طفل في بطاقة القائمة. */
@@ -1272,6 +1299,7 @@ public class MainActivity extends AppCompatActivity {
         }
         renderDeviceList();
         if (mScreen == SCREEN_DEVICE) renderDeviceScreen();
+        if (mScreen == SCREEN_EDIT) renderEditActions();
         TextView status = findViewById(R.id.tv_target_status);
         RemoteSync.Device d = findTarget(id);
         if (status != null && id.equals(mTarget)) {

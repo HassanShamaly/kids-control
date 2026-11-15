@@ -54,6 +54,7 @@ public class MonitorService extends Service {
     public static final String ACTION_SUPPRESS_OVERLAY = "com.almurshid.kidscontrol.SUPPRESS_OVERLAY"; // أخفِ الطبقة مؤقتاً لإدخال الرقم
     public static final String ACTION_RESHOW_OVERLAY   = "com.almurshid.kidscontrol.RESHOW_OVERLAY";
     public static final String ACTION_EMERGENCY        = "com.almurshid.kidscontrol.EMERGENCY";  // مدخل الطوارئ من الإشعار
+    public static final String ACTION_FORCE_BREAK      = "com.almurshid.kidscontrol.FORCE_BREAK"; // منع فوري (لحظي = 0)
     public static final String ACTION_REMOTE_UNLOCK    = "com.almurshid.kidscontrol.REMOTE_UNLOCK"; // فتح القفل عن بُعد من جوال ولي الأمر
 
     private static final String CH_ID = "kids_control_status";
@@ -211,6 +212,10 @@ public class MonitorService extends Service {
         }
         if (ACTION_EMERGENCY.equals(action)) {
             uiHandler.post(this::openPinPanel);
+            return START_STICKY;
+        }
+        if (ACTION_FORCE_BREAK.equals(action)) {
+            if (bgHandler != null) bgHandler.post(this::triggerForcedBreak);
             return START_STICKY;
         }
         if (ACTION_REMOTE_UNLOCK.equals(action)) {
@@ -519,6 +524,7 @@ public class MonitorService extends Service {
     // ================= القفل =================
     private void triggerLock(int cat) {
         long now = System.currentTimeMillis();
+        ConfigApplier.endInstant(prefs);   // انتهى الوقت اللحظي الممنوح: يعود الإعداد الافتراضي
         locked = true;
         lockedCat = cat;
         prefs.setLocked(true, cat);
@@ -540,6 +546,25 @@ public class MonitorService extends Service {
         } else {
             updateNotificationLocked();
         }
+    }
+
+    /** منع فوري من ولي الأمر (إعداد لحظي = 0): استراحة بمدة الإعداد الافتراضي، ثم يعود الافتراضي. */
+    private void triggerForcedBreak() {
+        if (!prefs.enabled() || prefs.remoteOff()) return;
+        ConfigApplier.endInstant(prefs);
+        long now = System.currentTimeMillis();
+        locked = true;
+        lockedCat = AppClassifier.CAT_YT;
+        prefs.setLocked(true, lockedCat);
+        breakUntil = now + Math.max(1, prefs.breakMinutes()) * 60_000L;
+        saveState(now, true);
+        pauseMedia();
+        KidsAccessibilityService.goHome();
+        overlayVisible = false;
+        uiHandler.post(this::removeOverlay);   // أعِد بناء الطبقة كاستراحة (بلا زر على جهاز الطفل)
+        postShowOverlay(lockedCat);
+        lastNotifTs = 0L;
+        updateOverlayBreak(now);
     }
 
     /** انتهى زمن الشاشة المسموح ليلاً: استراحة إجبارية، وبعدها يلزم فتح ولي الأمر. */

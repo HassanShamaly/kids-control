@@ -54,6 +54,15 @@ public final class ConfigApplier {
         try { p.applyConfig(new JSONObject(base)); } catch (Throwable ignored) { }
     }
 
+    /** ينهي أي إعداد لحظي سارٍ الآن ويعيد الإعداد الافتراضي (عند القفل أو المنع الفوري). */
+    public static void endInstant(Prefs p) {
+        if (p.instantUntil() <= 0) return;
+        p.setInstantUntil(0L);
+        String base = p.baseConfigJson();
+        if (base.isEmpty()) return;
+        try { p.applyConfig(new JSONObject(base)); } catch (Throwable ignored) { }
+    }
+
     /** الإعداد «الافتراضي» لهذا الجهاز للتحرير (الأساس إن كان هناك لحظي سارٍ). */
     public static JSONObject editableDefault(Prefs p) {
         if (p.instantUntil() > System.currentTimeMillis() && !p.baseConfigJson().isEmpty()) {

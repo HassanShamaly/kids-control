@@ -21,6 +21,8 @@
         tools:ignore="QueryAllPackagesPermission" />
     <!-- تنزيل التحديث داخل التطبيق وفتح شاشة تثبيته -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- أثناء القفل: إنهاء تطبيق الفيديو في الخلفية (حيلة التطبيقات الأخيرة/لوحة الحافة) -->
+    <uses-permission android:name="android.permission.KILL_BACKGROUND_PROCESSES" />
     <!-- طلب استثناء البطارية حتى لا يوقف النظام خدمة المراقبة -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />

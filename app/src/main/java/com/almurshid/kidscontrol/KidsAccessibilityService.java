@@ -1,7 +1,13 @@
 package com.almurshid.kidscontrol;
 
 import android.accessibilityservice.AccessibilityService;
+import android.accessibilityservice.AccessibilityServiceInfo;
 import android.content.ComponentName;
+import android.content.Intent;
+import android.content.pm.ResolveInfo;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.SystemClock;
 import android.content.pm.PackageManager;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
@@ -47,6 +53,83 @@ public class KidsAccessibilityService extends AccessibilityService {
 
     public static boolean isRunning() { return instance != null; }
 
+    // ================= وضع القفل المشدّد =================
+    // أثناء شاشة القفل تتوسع الخدمة لتراقب كل التطبيقات (لا الإعدادات فقط)، فأي تطبيق يُفتح
+    // من لوحة الحافة أو التطبيقات الأخيرة يُغلق فوراً. يعود النطاق الضيق عند الفتح (لا تعارض مع البنوك).
+    private static volatile boolean lockdown = false;
+    private volatile Boolean appliedScope = null;   // النطاق المطبّق فعلاً (null = لم يُطبّق بعد)
+    private String[] origPkgs;                       // نطاق الإعدادات الأصلي من ملف الخدمة
+    private final Handler main = new Handler(Looper.getMainLooper());
+    private long ignoreUntil = 0L;
+    private String homePkg;
+
+    /** يُستدعى من خدمة المراقبة في كل دورة بحالة القفل الحالية. */
+    public static void setLockdown(boolean on) {
+        lockdown = on;
+        KidsAccessibilityService s = instance;
+        if (s != null && (s.appliedScope == null || s.appliedScope != on)) s.main.post(s::applyScope);
+    }
+
+    private void applyScope() {
+        try {
+            AccessibilityServiceInfo info = getServiceInfo();
+            if (info == null) return;
+            boolean on = lockdown;
+            info.packageNames = on ? null : origPkgs;
+            setServiceInfo(info);
+            appliedScope = on;
+        } catch (Throwable ignored) { }
+    }
+
+    private boolean isLauncher(String pkg) {
+        if (homePkg == null) {
+            try {
+                ResolveInfo ri = pm.resolveActivity(new Intent(Intent.ACTION_MAIN)
+                        .addCategory(Intent.CATEGORY_HOME), PackageManager.MATCH_DEFAULT_ONLY);
+                homePkg = ri != null && ri.activityInfo != null ? ri.activityInfo.packageName : "";
+            } catch (Throwable t) { homePkg = ""; }
+        }
+        return pkg.equals(homePkg) || pkg.contains("launcher");
+    }
+
+    private static boolean isCallPkg(String pkg) {
+        return pkg.contains("dialer") || pkg.contains("incallui") || pkg.contains("telecom")
+                || pkg.equals("com.android.phone") || pkg.contains("emergency");
+    }
+
+    private static boolean isEdgePanel(String pkg) {
+        return pkg.contains("cocktailbar") || pkg.contains("appsedge") || pkg.contains("edgepanel")
+                || pkg.contains("edgescreen") || pkg.contains("edgelighting");
+    }
+
+    /** أثناء القفل: أي نافذة تُفتح خلف/فوق الطبقة تُغلق (لوحة الحافة، التطبيقات الأخيرة، أي تطبيق). */
+    private void handleLocked(String pkg, String cls) {
+        if (pkg.equals(getPackageName()) || isCallPkg(pkg)) return;
+        if (pkg.equals("com.android.systemui") || pkg.equals("android")) return;   // الإشعارات، قائمة التشغيل، الطوارئ
+        if (pkg.contains("packageinstaller") && prefs != null && prefs.installActive()) return;
+        if (pkg.contains("inputmethod") || pkg.contains("keyboard") || pkg.contains("honeyboard")) return;
+        long now = SystemClock.uptimeMillis();
+        if (now < ignoreUntil) return;
+        if (isEdgePanel(pkg)) {
+            ignoreUntil = now + 1200L;
+            performGlobalAction(GLOBAL_ACTION_BACK);
+            performGlobalAction(GLOBAL_ACTION_HOME);
+            return;
+        }
+        if (isLauncher(pkg)) {
+            // الرئيسية الثابتة لا تُطلق أحداثاً؛ الحدث هنا = فتح «التطبيقات الأخيرة» أو درج التطبيقات
+            ignoreUntil = now + 1200L;
+            performGlobalAction(GLOBAL_ACTION_HOME);
+            return;
+        }
+        if (cls == null || !isActivity(pkg, cls)) return;
+        ignoreUntil = now + 1200L;
+        performGlobalAction(GLOBAL_ACTION_BACK);
+        performGlobalAction(GLOBAL_ACTION_HOME);
+        final String victim = pkg;
+        main.postDelayed(() -> MonitorService.killBg(this, victim), 1500L);   // أوقف الفيديو نهائياً
+    }
+
     /** التطبيق المفتوح حسب خدمة الحماية، أو null إن لم تكن تعمل. */
     public static String currentForeground() {
         return instance != null ? foregroundPkg : null;
@@ -77,6 +160,12 @@ public class KidsAccessibilityService extends AccessibilityService {
         instance = this;
         prefs = new Prefs(this);
         pm = getPackageManager();
+        try {
+            AccessibilityServiceInfo info = getServiceInfo();
+            if (info != null) origPkgs = info.packageNames;
+        } catch (Throwable ignored) { }
+        appliedScope = null;
+        if (lockdown) applyScope();
         MonitorService.ensureRunning(this);
     }
 
@@ -92,7 +181,9 @@ public class KidsAccessibilityService extends AccessibilityService {
                 if (cls != null && isActivity(pkg, cls.toString())) {
                     foregroundPkg = pkg;
                 }
+                if (lockdown) { handleLocked(pkg, cls != null ? cls.toString() : null); return; }
             }
+            if (lockdown && !GUARDED.contains(pkg)) return;   // أثناء القفل: لا نعالج محتوى بقية التطبيقات
 
             boolean installer = pkg.contains("packageinstaller");
             // أثناء نافذة تحديث التطبيق لا نحرس شاشة التثبيت، فلا يتعارض القفل مع التحديث

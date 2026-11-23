@@ -244,6 +244,7 @@ public class MonitorService extends Service {
         long delta = now - lastPollTs;
         if (delta < 0 || delta > 60_000L) delta = POLL_MS;
         lastPollTs = now;
+        KidsAccessibilityService.setLockdown(locked);   // أثناء القفل: مراقبة مشدّدة لكل التطبيقات
 
         // حماية من تغيير ساعة الجوال: أي قفزة في الساعة تُزاح بها نهاية الاستراحة، فلا تنتهي مبكراً
         long el = android.os.SystemClock.elapsedRealtime();
@@ -306,7 +307,11 @@ public class MonitorService extends Service {
             if (!overlayVisible && !suppressed) { postShowOverlay(lockedCat); }
             if (onBreak) updateOverlayBreak(now); else if (!suppressed) updateNotificationLocked();
             Set<String> playing = KidsNotificationListener.playingPackages(this);
-            if ((playing != null && !playing.isEmpty()) || am.isMusicActive()) pauseMedia();
+            if ((playing != null && !playing.isEmpty()) || am.isMusicActive()) {
+                pauseMedia();
+                KidsNotificationListener.pauseAll(this);   // كل جلسة وسائط مباشرة
+                if (playing != null) for (String p : playing) killBg(this, p);
+            }
             return;
         }
 
@@ -665,6 +670,15 @@ public class MonitorService extends Service {
             notify(buildNotification(getString(R.string.n_break),
                     getString(R.string.break_msg, fmt(rem)), null, ACT_NONE));
         }
+    }
+
+    /** يُنهي تطبيقاً في الخلفية (يتوقف الفيديو نهائياً حتى في معاينة التطبيقات الأخيرة). */
+    static void killBg(Context c, String pkg) {
+        if (pkg == null || pkg.equals(c.getPackageName())) return;
+        try {
+            android.app.ActivityManager a = (android.app.ActivityManager) c.getSystemService(Context.ACTIVITY_SERVICE);
+            if (a != null) a.killBackgroundProcesses(pkg);
+        } catch (Throwable ignored) { }
     }
 
     private void pauseMedia() {

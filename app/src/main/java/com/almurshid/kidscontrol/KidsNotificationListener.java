@@ -24,6 +24,24 @@ public class KidsNotificationListener extends NotificationListenerService {
     }
 
     /** الحزم التي تشغّل وسائط الآن، أو null إذا لم تُمنح الصلاحية. */
+    /** يوقف كل وسائط تعمل (فيديو/صوت) مباشرة عبر جلساتها، لا بزر وسائط واحد. */
+    public static void pauseAll(Context c) {
+        try {
+            MediaSessionManager msm = (MediaSessionManager) c.getSystemService(Context.MEDIA_SESSION_SERVICE);
+            if (msm == null) return;
+            List<MediaController> list = msm.getActiveSessions(
+                    new ComponentName(c, KidsNotificationListener.class));
+            for (MediaController mc : list) {
+                if (c.getPackageName().equals(mc.getPackageName())) continue;
+                PlaybackState st = mc.getPlaybackState();
+                if (st != null && (st.getState() == PlaybackState.STATE_PLAYING
+                        || st.getState() == PlaybackState.STATE_BUFFERING)) {
+                    try { mc.getTransportControls().pause(); } catch (Throwable ignored) { }
+                }
+            }
+        } catch (Throwable ignored) { }
+    }
+
     public static Set<String> playingPackages(Context c) {
         try {
             MediaSessionManager msm = (MediaSessionManager) c.getSystemService(Context.MEDIA_SESSION_SERVICE);

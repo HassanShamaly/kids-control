@@ -92,6 +92,17 @@ public class KidsAccessibilityService extends AccessibilityService {
         return pkg.equals(homePkg) || pkg.contains("launcher");
     }
 
+    /** الشاشة مضاءة والجوال مفتوح (ليس على شاشة القفل الأصلية). */
+    private boolean screenInUse() {
+        try {
+            android.os.PowerManager pw = (android.os.PowerManager) getSystemService(POWER_SERVICE);
+            if (pw != null && !pw.isInteractive()) return false;
+            android.app.KeyguardManager kg = (android.app.KeyguardManager) getSystemService(KEYGUARD_SERVICE);
+            if (kg != null && kg.isKeyguardLocked()) return false;
+        } catch (Throwable ignored) { }
+        return true;
+    }
+
     private static boolean isCallPkg(String pkg) {
         return pkg.contains("dialer") || pkg.contains("incallui") || pkg.contains("telecom")
                 || pkg.equals("com.android.phone") || pkg.contains("emergency");
@@ -104,6 +115,11 @@ public class KidsAccessibilityService extends AccessibilityService {
 
     /** أثناء القفل: أي نافذة تُفتح خلف/فوق الطبقة تُغلق (لوحة الحافة، التطبيقات الأخيرة، أي تطبيق). */
     private void handleLocked(String pkg, String cls) {
+        // الشاشة مطفأة أو قفل الجوال الأصلي ظاهر: لا نفعل شيئاً. أي «رجوع/رئيسية» هنا كان
+        // يوقظ الشاشة (أحداث شاشة العرض الدائم AOD) فتظل تفتح وتطفئ طوال الاستراحة.
+        if (!screenInUse()) return;
+        if (pkg.contains("aod") || pkg.contains("keyguard") || pkg.contains("lockscreen")
+                || pkg.contains("screensaver") || pkg.contains("dream")) return;
         if (pkg.equals(getPackageName()) || isCallPkg(pkg)) return;
         if (pkg.equals("com.android.systemui") || pkg.equals("android")) return;   // الإشعارات، قائمة التشغيل، الطوارئ
         if (pkg.contains("packageinstaller") && prefs != null && prefs.installActive()) return;

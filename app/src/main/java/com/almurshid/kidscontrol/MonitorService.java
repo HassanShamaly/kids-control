@@ -63,6 +63,7 @@ public class MonitorService extends Service {
     // توفير البطارية والحرارة: والشاشة مطفأة لا يوجد ما يُراقَب، فتُبطَّأ الدورة كثيراً
     private static final long IDLE_POLL_MS = 30_000L;
     private volatile boolean screenOnNow = true;
+    private long lastAliveSave = 0L;
 
     /** عند إضاءة الشاشة/فتح الجوال: دورة فورية ومزامنة فورية (بدل انتظار الدورة البطيئة). */
     private final BroadcastReceiver screenReceiver = new BroadcastReceiver() {
@@ -188,6 +189,24 @@ public class MonitorService extends Service {
         breakUntil = prefs.breakUntil();
         if (prefs.locked()) { locked = true; lockedCat = prefs.lockedCat(); }
 
+        // أُعيد تشغيل الخدمة بعد أن أوقفها النظام (مثلاً حرارة الجهاز أثناء اللعب) والطفل كان
+        // في وقت محسوب: مدة التوقف تُحتسب عليه، فيُقفل فوراً إن كان قد تجاوز وقته.
+        long alive = prefs.aliveTs();
+        long gapNow = System.currentTimeMillis();
+        long gap = gapNow - alive;
+        if (alive > 0 && gap > 20_000L && gap < 6 * 3_600_000L && !locked
+                && currentCat != AppClassifier.CAT_NONE && prefs.enabled()) {
+            periodMs += gap;
+            sessionMs += gap;
+            if (currentCat >= 0 && currentCat < usedMs.length) usedMs[currentCat] += gap;
+            lastMonitoredTs = gapNow;
+            prefs.setPeriodMs(periodMs);
+            prefs.setSessionMs(sessionMs);
+            prefs.saveUsage(usedMs[AppClassifier.CAT_YT], usedMs[AppClassifier.CAT_GAME], lastMonitoredTs, currentCat);
+            lastError = "restarted after " + (gap / 1000L) + "s stop";
+        }
+        prefs.setAliveTs(gapNow);
+
         loop = new Runnable() {
             @Override public void run() {
                 try { poll(); }
@@ -265,6 +284,8 @@ public class MonitorService extends Service {
         if (delta < 0 || delta > 60_000L) delta = POLL_MS;
         lastPollTs = now;
         screenOnNow = power == null || power.isInteractive();
+        if (now - lastAliveSave >= 15_000L) { lastAliveSave = now; prefs.setAliveTs(now); }
+        Watchdog.armSoon(this, screenOnNow ? 90_000L : 120_000L);   // يعيد التشغيل إن توقفت الخدمة
         KidsAccessibilityService.setLockdown(locked && screenOnNow);   // الشاشة مطفأة: لا مراقبة مشدّدة   // أثناء القفل: مراقبة مشدّدة لكل التطبيقات
 
         // حماية من تغيير ساعة الجوال: أي قفزة في الساعة تُزاح بها نهاية الاستراحة، فلا تنتهي مبكراً
@@ -951,6 +972,7 @@ public class MonitorService extends Service {
     @Override
     public void onDestroy() {
         running = false;
+        try { prefs.setAliveTs(0L); } catch (Throwable ignored) { }   // إيقاف مقصود: لا يُحتسب كتوقف مفاجئ
         if (bgHandler != null) bgHandler.removeCallbacksAndMessages(null);
         if (bgThread != null) bgThread.quitSafely();
         removeOverlay();

@@ -240,6 +240,9 @@ public class Prefs {
                 .putLong(K_LAST_MON, lastMon).putInt(K_CUR_CAT, curCat).apply();
     }
     public void setPeriodMs(long v) { sp.edit().putLong(K_PERIOD_MS, v).apply(); }
+    /** آخر لحظة كانت فيها خدمة المراقبة حيّة (لاحتساب وقت توقفها إن أوقفها النظام). */
+    public long aliveTs()           { return sp.getLong("alive_ts", 0L); }
+    public void setAliveTs(long v)  { sp.edit().putLong("alive_ts", v).apply(); }
 
     // ===== جدول التعطيل اليومي =====
     public boolean schedOn()  { return sp.getBoolean(K_SCHED_ON, false); }

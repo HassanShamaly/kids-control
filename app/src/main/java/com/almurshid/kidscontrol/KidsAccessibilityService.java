@@ -59,6 +59,7 @@ public class KidsAccessibilityService extends AccessibilityService {
     private static volatile boolean lockdown = false;
     private volatile Boolean appliedScope = null;   // النطاق المطبّق فعلاً (null = لم يُطبّق بعد)
     private String[] origPkgs;                       // نطاق الإعدادات الأصلي من ملف الخدمة
+    private int origEvents = -1;                     // أنواع الأحداث الأصلية
     private final Handler main = new Handler(Looper.getMainLooper());
     private long ignoreUntil = 0L;
     private String homePkg;
@@ -76,6 +77,9 @@ public class KidsAccessibilityService extends AccessibilityService {
             if (info == null) return;
             boolean on = lockdown;
             info.packageNames = on ? null : origPkgs;
+            // أثناء القفل: حدث فتح النوافذ فقط (لا سيل «تغيّر المحتوى» من كل التطبيقات = حرارة)
+            if (origEvents != -1)
+                info.eventTypes = on ? AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED : origEvents;
             setServiceInfo(info);
             appliedScope = on;
         } catch (Throwable ignored) { }
@@ -178,7 +182,7 @@ public class KidsAccessibilityService extends AccessibilityService {
         pm = getPackageManager();
         try {
             AccessibilityServiceInfo info = getServiceInfo();
-            if (info != null) origPkgs = info.packageNames;
+            if (info != null) { origPkgs = info.packageNames; origEvents = info.eventTypes; }
         } catch (Throwable ignored) { }
         appliedScope = null;
         if (lockdown) applyScope();

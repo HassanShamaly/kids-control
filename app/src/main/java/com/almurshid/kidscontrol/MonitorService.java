@@ -60,6 +60,21 @@ public class MonitorService extends Service {
     private static final String CH_ID = "kids_control_status";
     private static final int NOTIF_ID = 1001;
     private static final long POLL_MS = 2000L;
+    // توفير البطارية والحرارة: والشاشة مطفأة لا يوجد ما يُراقَب، فتُبطَّأ الدورة كثيراً
+    private static final long IDLE_POLL_MS = 30_000L;
+    private volatile boolean screenOnNow = true;
+
+    /** عند إضاءة الشاشة/فتح الجوال: دورة فورية ومزامنة فورية (بدل انتظار الدورة البطيئة). */
+    private final BroadcastReceiver screenReceiver = new BroadcastReceiver() {
+        @Override public void onReceive(Context c, Intent i) {
+            if (bgHandler == null || loop == null) return;
+            screenOnNow = true;
+            RemoteSync.pullSoon();
+            bgHandler.post(() -> { lastPollTs = System.currentTimeMillis(); });
+            bgHandler.removeCallbacks(loop);
+            bgHandler.post(loop);
+        }
+    };
 
     private static volatile boolean running = false;
     public static boolean isActive() { return running; }
@@ -148,6 +163,11 @@ public class MonitorService extends Service {
 
         LocalBroadcastManager.getInstance(this)
                 .registerReceiver(unlockReceiver, new IntentFilter(ACTION_UNLOCK_OK));
+        try {
+            IntentFilter sf = new IntentFilter(Intent.ACTION_SCREEN_ON);
+            sf.addAction(Intent.ACTION_USER_PRESENT);
+            registerReceiver(screenReceiver, sf);
+        } catch (Throwable ignored) { }
 
         try {
             NotificationManager nm0 = getSystemService(NotificationManager.class);
@@ -175,7 +195,7 @@ public class MonitorService extends Service {
                     String m = String.valueOf(t.getMessage());
                     lastError = t.getClass().getSimpleName() + ": " + (m.length() > 80 ? m.substring(0, 80) : m);
                 }
-                bgHandler.postDelayed(this, POLL_MS);
+                bgHandler.postDelayed(this, screenOnNow ? POLL_MS : IDLE_POLL_MS);
             }
         };
     }
@@ -244,7 +264,8 @@ public class MonitorService extends Service {
         long delta = now - lastPollTs;
         if (delta < 0 || delta > 60_000L) delta = POLL_MS;
         lastPollTs = now;
-        KidsAccessibilityService.setLockdown(locked);   // أثناء القفل: مراقبة مشدّدة لكل التطبيقات
+        screenOnNow = power == null || power.isInteractive();
+        KidsAccessibilityService.setLockdown(locked && screenOnNow);   // الشاشة مطفأة: لا مراقبة مشدّدة   // أثناء القفل: مراقبة مشدّدة لكل التطبيقات
 
         // حماية من تغيير ساعة الجوال: أي قفزة في الساعة تُزاح بها نهاية الاستراحة، فلا تنتهي مبكراً
         long el = android.os.SystemClock.elapsedRealtime();
@@ -260,7 +281,7 @@ public class MonitorService extends Service {
         lastElapsedTs = el;
 
         // جهاز الطفل: اسحب إعدادات ولي الأمر دورياً وطبّقها
-        RemoteSync.pullIfDue(this, 60_000L);
+        RemoteSync.pullIfDue(this, screenOnNow ? 60_000L : 15 * 60_000L);
         // انتهاء الإعداد اللحظي ← العودة للإعداد الافتراضي
         ConfigApplier.checkInstantExpiry(prefs, now);
 
@@ -303,6 +324,11 @@ public class MonitorService extends Service {
         if (locked) {
             boolean onBreak = breakUntil > now;
             if (!onBreak && breakUntil > 0) { endBreakToFingerprint(); return; } // انتهى العدّاد → تُطلب البصمة
+            if (!screenOnNow) {
+                // الشاشة مطفأة: لا تحديث للعدّاد ولا للإشعار (لا أحد يراه)؛ فقط أوقف أي صوت يعمل
+                if (am != null && am.isMusicActive()) { pauseMedia(); KidsNotificationListener.pauseAll(this); }
+                return;
+            }
             boolean suppressed = now < overlaySuppressUntil; // إدخال رقم سري جارٍ
             if (!overlayVisible && !suppressed) { postShowOverlay(lockedCat); }
             if (onBreak) updateOverlayBreak(now); else if (!suppressed) updateNotificationLocked();
@@ -315,9 +341,10 @@ public class MonitorService extends Service {
             return;
         }
 
-        String fgUsage = usageForeground(now);
+        boolean screenOn = screenOnNow;
+        // الشاشة مطفأة: لا حاجة لقراءة سجل الاستخدام الآن (يُقرأ ما فات عند إضاءتها)
+        String fgUsage = screenOn ? usageForeground(now) : null;
         String fgA11y = KidsAccessibilityService.currentForeground();
-        boolean screenOn = power == null || power.isInteractive();
         boolean deviceLocked = keyguard != null && keyguard.isKeyguardLocked();
         boolean active = screenOn && !deviceLocked;
 
@@ -383,7 +410,7 @@ public class MonitorService extends Service {
             }
         }
         if (monitored) saveState(now, false);
-        updateNotification(monitored ? cat : AppClassifier.CAT_NONE, fg, cat, now);
+        if (screenOn) updateNotification(monitored ? cat : AppClassifier.CAT_NONE, fg, cat, now);
     }
 
     private void saveState(long now, boolean force) {
@@ -440,7 +467,7 @@ public class MonitorService extends Service {
 
     // ================= الإشعارات =================
     private void updateNotification(int countingCat, String fg, int detectedCat, long now) {
-        if (now - lastNotifTs < 3_000L) return;
+        if (now - lastNotifTs < 5_000L) return;
         lastNotifTs = now;
 
         String vName = getString(R.string.cat_video);
@@ -497,6 +524,9 @@ public class MonitorService extends Service {
     }
 
     private void updateNotificationRemoteOff() {
+        // كان يُعاد نشر الإشعار نفسه كل ثانيتين بلا توقف (حمل وحرارة): مرة كل 30 ثانية تكفي
+        if (System.currentTimeMillis() - lastNotifTs < 30_000L) return;
+        lastNotifTs = System.currentTimeMillis();
         notify(buildNotification(getString(R.string.n_remote_off),
                 getString(R.string.n_remote_off_sub), null, ACT_NONE));
     }
@@ -510,6 +540,9 @@ public class MonitorService extends Service {
     }
 
     private void updateNotificationLocked() {
+        // كان يُعاد نشر الإشعار نفسه كل ثانيتين بلا توقف (حمل وحرارة): مرة كل 30 ثانية تكفي
+        if (System.currentTimeMillis() - lastNotifTs < 30_000L) return;
+        lastNotifTs = System.currentTimeMillis();
         notify(buildNotification(getString(R.string.n_locked_title),
                 getString(R.string.notif_locked), null, ACT_NONE));
     }
@@ -923,6 +956,7 @@ public class MonitorService extends Service {
         removeOverlay();
         releaseAudioFocus();
         LocalBroadcastManager.getInstance(this).unregisterReceiver(unlockReceiver);
+        try { unregisterReceiver(screenReceiver); } catch (Throwable ignored) { }
         super.onDestroy();
     }
 

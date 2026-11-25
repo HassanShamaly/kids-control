@@ -115,13 +115,19 @@ public class RemoteSync {
     }
 
     /** يسحب هذا الجهاز إعداده إن مرّ وقت كافٍ (من حلقة المراقبة)، ويجدّد تسجيله. */
+    private static long lastBeatTs = 0L;
+
+    /** المزامنة التالية تحدث في أول دورة (عند إضاءة الشاشة). */
+    public static void pullSoon() { lastPullTs = 0L; }
+
     public static void pullIfDue(Context c, long minIntervalMs) {
         Prefs p = new Prefs(c);
         if (!p.isChild() || !p.syncConfigured()) return;
         long now = System.currentTimeMillis();
         if (now - lastPullTs < minIntervalMs) return;
         lastPullTs = now;
-        registerDevice(c);
+        // نبضة الحالة (آخر ظهور) كل 3 دقائق على الأكثر — طلب إنترنت واحد بدل اثنين كل دقيقة
+        if (now - lastBeatTs >= 3 * 60_000L) { lastBeatTs = now; registerDevice(c); }
         pull(c, false);
     }
 

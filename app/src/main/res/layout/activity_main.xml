@@ -205,8 +205,17 @@
                 android:layout_height="wrap_content" android:orientation="vertical" android:visibility="gone">
                 <androidx.cardview.widget.CardView style="@style/Card">
                     <LinearLayout style="@style/CardInner">
+                        <CheckBox android:id="@+id/cb_screen" style="@style/Check" android:text="@string/screen_label" />
+                        <TextView style="@style/Hint" android:text="@string/screen_hint" />
+                        <TextView style="@style/Hint" android:text="@string/minutes_label" />
+                        <EditText android:id="@+id/et_screen_min" style="@style/Num" android:hint="60" />
+                    </LinearLayout>
+                </androidx.cardview.widget.CardView>
+                <androidx.cardview.widget.CardView style="@style/Card">
+                    <LinearLayout style="@style/CardInner">
                         <CheckBox android:id="@+id/cb_schedule" style="@style/Check" android:text="@string/schedule_label" />
                         <TextView style="@style/Hint" android:text="@string/schedule_hint" />
+                        <Button android:id="@+id/btn_sched_days" style="@style/Secondary" android:text="@string/sched_days_btn" />
                         <Button android:id="@+id/btn_sched_from" style="@style/Secondary" android:text="@string/sched_from" />
                         <Button android:id="@+id/btn_sched_to" style="@style/Secondary" android:text="@string/sched_to" />
                     </LinearLayout>
@@ -228,10 +237,6 @@
                         <Button android:id="@+id/btn_night_to" style="@style/Secondary" android:text="@string/night_to" />
                         <TextView style="@style/Hint" android:text="@string/night_limit_label" />
                         <EditText android:id="@+id/et_night_limit" style="@style/Num" android:hint="1" />
-                        <View style="@style/Divider" />
-                        <TextView style="@style/FieldLabel" android:text="@string/night_screen_label" />
-                        <TextView style="@style/Hint" android:text="@string/night_screen_hint" />
-                        <EditText android:id="@+id/et_night_screen" style="@style/Num" android:hint="0" />
                     </LinearLayout>
                 </androidx.cardview.widget.CardView>
             </LinearLayout>

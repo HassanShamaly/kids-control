@@ -131,6 +131,12 @@ public class KidsAccessibilityService extends AccessibilityService {
         // استراحة القرآن: صحبة القرآن وحدها مسموحة؛ أي نافذة أخرى تُنهي الإذن وتعيد الاستراحة
         if (QuranPass.active()) {
             if (QuranPass.isSohbaWindow(this, pkg, cls, title)) return;
+            // نوافذ كروم الانتقالية أثناء الفتح، أو نوافذ ليست شاشة تطبيق (تحميل/حوار) لا تُنهي الإذن
+            if (QuranPass.isBrowserFamily(pkg)
+                    && (QuranPass.inLaunchGrace() || cls == null || !isActivity(pkg, cls)
+                        || cls.contains("Launcher") || cls.contains("Splash") || cls.contains("Trampoline"))) return;
+            if (!isLauncher(pkg) && !isEdgePanel(pkg) && (cls == null || !isActivity(pkg, cls))) return;
+            if (isLauncher(pkg) && QuranPass.inLauncherGrace()) return;   // لحظة الانتقال إلى صحبة القرآن
             QuranPass.end();
             try {
                 startService(new Intent(this, MonitorService.class).setAction(MonitorService.ACTION_RESHOW_OVERLAY));

@@ -15,10 +15,22 @@ import android.os.Bundle;
 public final class QuranPass {
     static final String URL = "https://hassanshamaly.github.io/sohba/v6/";
     private static volatile long until = 0L;
+    private static volatile long startedAt = 0L;
     private QuranPass() { }
 
     static boolean active() { return System.currentTimeMillis() < until; }
-    static void start(long untilTs) { until = untilTs; }
+    static void start(long untilTs) { until = untilTs; startedAt = android.os.SystemClock.elapsedRealtime(); }
+
+    /** أول ثوانٍ بعد الفتح: نوافذ كروم الانتقالية (شاشة البداية/الموجّه) لا تُنهي الإذن. */
+    static boolean inLaunchGrace() { return android.os.SystemClock.elapsedRealtime() - startedAt < 6_000L; }
+
+    /** أول ثانيتين: ظهور الشاشة الرئيسية لحظة الانتقال لا يُنهي الإذن. */
+    static boolean inLauncherGrace() { return android.os.SystemClock.elapsedRealtime() - startedAt < 2_500L; }
+
+    /** نوافذ من كروم أو تطبيق ويب — قد تكون مرحلة انتقالية أثناء فتح صحبة القرآن. */
+    static boolean isBrowserFamily(String pkg) {
+        return pkg != null && (pkg.startsWith("org.chromium.webapk") || isChrome(pkg));
+    }
     static void end() { until = 0L; }
 
     private static boolean isChrome(String pkg) {

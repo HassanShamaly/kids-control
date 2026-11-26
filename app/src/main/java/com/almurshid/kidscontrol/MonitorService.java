@@ -847,14 +847,13 @@ public class MonitorService extends Service {
         final Intent i = QuranPass.launchIntent(this);
         if (i == null) return;
         QuranPass.start(breakUntil);
-        postRemoveOverlay();
+        // افتح صحبة القرآن أولاً تحت الطبقة، ثم ارفع الطبقة بعد أن تصبح نافذته في المقدمة.
+        // (رفع الطبقة أولاً كان يعيد التركيز للشاشة الرئيسية لحظةً فيُنهي الإذن، فيلزم ضغطتان)
+        try { startActivity(i); }
+        catch (Throwable t) { QuranPass.end(); return; }
         uiHandler.postDelayed(() -> {
-            try { startActivity(i); }
-            catch (Throwable t) {
-                QuranPass.end();
-                if (bgHandler != null) bgHandler.post(() -> { if (locked) postShowOverlay(lockedCat); });
-            }
-        }, 150L);
+            if (QuranPass.active()) postRemoveOverlay();
+        }, 450L);
     }
 
     // ================= لوحة الرقم السري داخل طبقة القفل (الخيط الرئيسي) =================

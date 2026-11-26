@@ -381,4 +381,8 @@
     <string name="days_all">كل الأيام</string>
     <string name="days_none">لا أيام</string>
     <string name="sum_screen_fmt">شاشة %1$d د</string>
+    <string name="quran_app_name">صحبة القرآن</string>
+    <string name="quran_suggest_title">استغل الاستراحة في مراجعة وردك 🌿</string>
+    <string name="quran_suggest_sub">افتح صحبة القرآن وراجع ما تحفظ حتى تنتهي الاستراحة</string>
+    <string name="quran_open">📖 افتح صحبة القرآن</string>
 </resources>

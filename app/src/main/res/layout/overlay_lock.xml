@@ -53,6 +53,56 @@
         android:textColor="#FFFFFF"
         android:textSize="18sp" />
     <LinearLayout
+        android:id="@+id/quran_box"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="28dp"
+        android:background="@drawable/quran_box_bg"
+        android:gravity="center_horizontal"
+        android:orientation="vertical"
+        android:padding="18dp"
+        android:visibility="gone">
+
+        <ImageView
+            android:layout_width="64dp"
+            android:layout_height="64dp"
+            android:contentDescription="@string/quran_app_name"
+            android:src="@drawable/sohba_icon" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:paddingTop="10dp"
+            android:text="@string/quran_suggest_title"
+            android:textColor="#F5E6C4"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:paddingTop="4dp"
+            android:paddingBottom="12dp"
+            android:text="@string/quran_suggest_sub"
+            android:textColor="#C9D3CF"
+            android:textSize="14sp" />
+
+        <Button
+            android:id="@+id/btn_quran"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/quran_btn_bg"
+            android:paddingStart="28dp"
+            android:paddingEnd="28dp"
+            android:text="@string/quran_open"
+            android:textColor="#0D1412"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <LinearLayout
         android:id="@+id/pin_panel"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"

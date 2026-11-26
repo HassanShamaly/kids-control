@@ -228,8 +228,8 @@
     <string name="crash_copied">تم النسخ</string>
 
     <!-- جدول التعطيل -->
-    <string name="schedule_label">تعطيل المراقبة في وقت محدد يومياً</string>
-    <string name="schedule_hint">خلال هذه الفترة لا تعمل المراقبة (مثلاً وقت الدوام نهاراً). تُستأنف تلقائياً بعدها.</string>
+    <string name="schedule_label">أيام وساعات الدوام (تتوقف المراقبة خلالها)</string>
+    <string name="schedule_hint">في الأيام المختارة وخلال هذه الساعات لا تعمل المراقبة (مثلاً وقت المدرسة أو العمل)، وتُستأنف تلقائياً بعدها. يُضبط لكل جوال على حدة.</string>
     <string name="sched_from">من الساعة: %1$s</string>
     <string name="sched_to">إلى الساعة: %1$s</string>
 
@@ -357,7 +357,7 @@
     <string name="sum_nolimit">بلا حد</string>
     <string name="sum_night_fmt">ليل %1$s–%2$s (حد %3$d د%4$s)</string>
     <string name="sum_night_screen_fmt">، شاشة %1$d د</string>
-    <string name="sum_sched_fmt">تعطيل %1$s–%2$s</string>
+    <string name="sum_sched_fmt">دوام %1$s %2$s–%3$s</string>
     <string name="sum_cooldown_fmt">تهدئة %1$d د</string>
     <string name="sum_break_fmt">استراحة %1$d د</string>
     <string name="sum_relax_fmt">أيام سماح: %1$d د</string>
@@ -374,4 +374,11 @@
     <string name="instant_need_min">اكتب عدد الدقائق (0 للمنع)</string>
     <string name="block_local_done">تم: الجوال ممنوع الآن حتى تنتهي الاستراحة</string>
     <string name="block_need_on">المراقبة متوقفة على هذا الجوال — شغّلها أولاً</string>
+    <string name="screen_label">حد وقت الشاشة العام (أي تطبيق)</string>
+    <string name="screen_hint">يُحتسب أي استخدام للجوال في أي تطبيق (بنترست، المتصفح…) في أي وقت. بعد هذه المدة المتواصلة تظهر استراحة إجبارية بمدة «الاستراحة». إذا ترك الطفل الجوال مطفأً مدة الاستراحة كاملة يبدأ العدّ من جديد. المكالمات لا تُحتسب.</string>
+    <string name="sched_days_btn">أيام الدوام: %1$s</string>
+    <string name="sched_days_title">أيام الدوام</string>
+    <string name="days_all">كل الأيام</string>
+    <string name="days_none">لا أيام</string>
+    <string name="sum_screen_fmt">شاشة %1$d د</string>
 </resources>

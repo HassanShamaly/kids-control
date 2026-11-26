@@ -51,6 +51,9 @@ public class MainActivity extends AppCompatActivity {
     private EditText etYt, etGame, etCooldown, etNightLimit, etNightScreen, etBreakThreshold, etBreakMinutes, etResume, etRevert, etRelaxLimit;
     private CheckBox cbYt, cbGame, cbSchedule, cbNight, cbRevert, cbRelax, cbExcludeFb, cbExcludeIg;
     private java.util.Set<String> relaxDays;
+    private java.util.Set<String> schedDays;
+    private CheckBox cbScreen;
+    private EditText etScreenMin;
     private TextView tvDefaultStatus;
     private Button btnSchedFrom, btnSchedTo, btnNightFrom, btnNightTo;
     private TextView tvUsage, tvOverlay, tvA11y, tvNotif, tvAdmin, tvStatus;
@@ -432,8 +435,13 @@ public class MainActivity extends AppCompatActivity {
         btnNightFrom = findViewById(R.id.btn_night_from);
         btnNightTo = findViewById(R.id.btn_night_to);
         etNightLimit = findViewById(R.id.et_night_limit);
-        etNightScreen = findViewById(R.id.et_night_screen);
-        etNightScreen.setText(String.valueOf(prefs.nightScreenMin()));
+        cbScreen = findViewById(R.id.cb_screen);
+        etScreenMin = findViewById(R.id.et_screen_min);
+        cbScreen.setChecked(prefs.screenOn());
+        etScreenMin.setText(String.valueOf(prefs.screenMin()));
+        schedDays = prefs.schedDays();
+        updateSchedDaysButton();
+        findViewById(R.id.btn_sched_days).setOnClickListener(v -> pickSchedDays());
         etBreakThreshold = findViewById(R.id.et_break_threshold);
         etBreakMinutes = findViewById(R.id.et_break_minutes);
         cbNight.setChecked(prefs.nightOn());
@@ -527,7 +535,9 @@ public class MainActivity extends AppCompatActivity {
         dst.setNightFrom(nightFrom);
         dst.setNightTo(nightTo);
         dst.setNightLimit(Math.max(1, parseInt(etNightLimit.getText().toString(), 1)));
-        dst.setNightScreenMin(Math.max(0, parseInt(etNightScreen.getText().toString(), 0)));
+        dst.setScreenOn(cbScreen.isChecked());
+        dst.setScreenMin(Math.max(1, parseInt(etScreenMin.getText().toString(), 60)));
+        if (schedDays != null) dst.setSchedDays(schedDays);
         dst.setBreakThreshold(Math.max(1, parseInt(etBreakThreshold.getText().toString(), 20)));
         dst.setBreakMinutes(Math.max(1, parseInt(etBreakMinutes.getText().toString(), 60)));
         dst.setResumeMinutes(Math.max(1, parseInt(etResume.getText().toString(), 30)));
@@ -539,6 +549,41 @@ public class MainActivity extends AppCompatActivity {
         if (relaxDays != null) dst.setRelaxDays(relaxDays);
         dst.setExcludeFb(cbExcludeFb.isChecked());
         dst.setExcludeIg(cbExcludeIg.isChecked());
+    }
+
+    private static final String[] DAY_NAMES = {"الأحد","الاثنين","الثلاثاء","الأربعاء","الخميس","الجمعة","السبت"};
+
+    /** نص مختصر للأيام المختارة: «الأحد–الخميس» أو «الأحد، الثلاثاء». */
+    private String daysText(java.util.Set<String> days) {
+        if (days == null || days.isEmpty()) return getString(R.string.days_none);
+        if (days.size() == 7) return getString(R.string.days_all);
+        java.util.List<String> n = new java.util.ArrayList<>();
+        for (int i = 1; i <= 7; i++) if (days.contains(String.valueOf(i))) n.add(DAY_NAMES[i - 1]);
+        if (days.size() == 5 && n.get(0).equals(DAY_NAMES[0]) && n.get(4).equals(DAY_NAMES[4])) return DAY_NAMES[0] + "–" + DAY_NAMES[4];
+        return android.text.TextUtils.join("، ", n);
+    }
+
+    private void updateSchedDaysButton() {
+        android.widget.Button b = findViewById(R.id.btn_sched_days);
+        if (b != null) b.setText(getString(R.string.sched_days_btn, daysText(schedDays)));
+    }
+
+    // اختيار أيام الدوام (الأحد=1 .. السبت=7)
+    private void pickSchedDays() {
+        final boolean[] checked = new boolean[7];
+        for (int i = 0; i < 7; i++) checked[i] = schedDays.contains(String.valueOf(i + 1));
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.sched_days_title)
+                .setMultiChoiceItems(DAY_NAMES, checked, (d, which, isChecked) -> checked[which] = isChecked)
+                .setPositiveButton(R.string.save, (d, w) -> {
+                    java.util.Set<String> s = new java.util.HashSet<>();
+                    for (int i = 0; i < 7; i++) if (checked[i]) s.add(String.valueOf(i + 1));
+                    schedDays = s;
+                    updateSchedDaysButton();
+                    if (!cbSchedule.isChecked()) cbSchedule.setChecked(true);
+                })
+                .setNegativeButton(R.string.cancel, null)
+                .show();
     }
 
     // اختيار الأيام المفتوحة (الأحد=1 .. السبت=7)
@@ -991,13 +1036,18 @@ public class MainActivity extends AppCompatActivity {
         else parts.add(getString(R.string.sum_limit2_fmt,
                 yOn ? getString(R.string.sum_min_fmt, y) : getString(R.string.sum_nolimit),
                 gOn ? getString(R.string.sum_min_fmt, g) : getString(R.string.sum_nolimit)));
-        if (c.optBoolean("night_on", true)) {
-            int ns = c.optInt("night_screen", 0);
+        if (c.optBoolean("screen_on", false))
+            parts.add(getString(R.string.sum_screen_fmt, c.optInt("screen_min", 60)));
+        if (c.optBoolean("night_on", true))
             parts.add(getString(R.string.sum_night_fmt, hhmm(c.optInt("night_from", 0)), hhmm(c.optInt("night_to", 360)),
-                    c.optInt("night_limit", 1), ns > 0 ? getString(R.string.sum_night_screen_fmt, ns) : ""));
+                    c.optInt("night_limit", 1), ""));
+        if (c.optBoolean("sched_on", false)) {
+            java.util.Set<String> sd = new java.util.HashSet<>();
+            org.json.JSONArray da = c.optJSONArray("sched_days");
+            if (da != null) for (int i = 0; i < da.length(); i++) sd.add(da.optString(i));
+            else for (int d = 1; d <= 7; d++) sd.add(String.valueOf(d));
+            parts.add(getString(R.string.sum_sched_fmt, daysText(sd), hhmm(c.optInt("sched_from", 480)), hhmm(c.optInt("sched_to", 900))));
         }
-        if (c.optBoolean("sched_on", false))
-            parts.add(getString(R.string.sum_sched_fmt, hhmm(c.optInt("sched_from", 480)), hhmm(c.optInt("sched_to", 900))));
         if (full) {
             parts.add(getString(R.string.sum_cooldown_fmt, Math.max(1, c.optInt("cooldown", 600) / 60)));
             parts.add(getString(R.string.sum_break_fmt, c.optInt("break_min", 60)));
@@ -1396,7 +1446,9 @@ public class MainActivity extends AppCompatActivity {
         cbNight.setChecked(src.nightOn());
         nightFrom = src.nightFrom(); nightTo = src.nightTo(); updateNightButtons();
         etNightLimit.setText(String.valueOf(src.nightLimit()));
-        etNightScreen.setText(String.valueOf(src.nightScreenMin()));
+        cbScreen.setChecked(src.screenOn());
+        etScreenMin.setText(String.valueOf(src.screenMin()));
+        schedDays = src.schedDays(); updateSchedDaysButton();
         etBreakThreshold.setText(String.valueOf(src.breakThreshold()));
         etBreakMinutes.setText(String.valueOf(src.breakMinutes()));
         etResume.setText(String.valueOf(src.resumeMinutes()));

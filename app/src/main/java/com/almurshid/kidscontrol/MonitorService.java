@@ -101,7 +101,8 @@ public class MonitorService extends Service {
     private int currentCat = AppClassifier.CAT_NONE;
     private long lastPollTs = 0L;
     private long lastWallTs = 0L, lastElapsedTs = 0L;   // لكشف تغيير ساعة الجوال
-    private long nightScreenMs = 0L, lastNightSaveTs = 0L; // زمن الشاشة العام ليلاً (أي تطبيق)
+    private long nightScreenMs = 0L, lastNightSaveTs = 0L; // زمن الشاشة العام (أي تطبيق)
+    private long screenIdleSince = 0L;                        // منذ متى الجوال غير مستخدم
     private long lastMonitoredTs = 0L;
     private volatile boolean locked = false;
     private int lockedCat = 0;
@@ -183,7 +184,7 @@ public class MonitorService extends Service {
         lastMonitoredTs = prefs.lastMonitored();
         currentCat = prefs.currentCat();
         periodMs = prefs.periodMs();
-        nightScreenMs = prefs.nightScreenUsedMs();
+        nightScreenMs = prefs.screenUsedMs();
         sessionMs = prefs.sessionMs();
         unlockCount = prefs.unlockCount();
         breakUntil = prefs.breakUntil();
@@ -369,19 +370,29 @@ public class MonitorService extends Service {
         boolean deviceLocked = keyguard != null && keyguard.isKeyguardLocked();
         boolean active = screenOn && !deviceLocked;
 
-        // حد الشاشة العام ليلاً: أي استخدام للجوال (أي تطبيق) يُحتسب، وبعد المدة المحددة استراحة إجبارية
-        int nsMin = prefs.nightScreenMin();
-        if (nsMin > 0 && prefs.inNightWindow()) {
+        // حد وقت الشاشة العام (مستقل): أي استخدام للجوال في أي تطبيق يُحتسب، وبعد المدة استراحة إجبارية.
+        // يبدأ العدّ من جديد إذا ابتعد الطفل عن الجوال (الشاشة مطفأة) مدة الاستراحة كاملة.
+        if (prefs.screenOn()) {
             String f0 = fgA11y != null ? fgA11y : fgUsage;
             boolean call = f0 != null && (f0.contains("dialer") || f0.contains("incallui") || f0.contains("telecom"));
-            if (active && !call && now > graceUntil) {
-                nightScreenMs += delta;
-                if (now - lastNightSaveTs > 20_000L) { lastNightSaveTs = now; prefs.setNightScreenUsedMs(nightScreenMs); }
-                if (nightScreenMs >= nsMin * 60_000L) { triggerNightBreak(); return; }
+            long restMs = Math.max(1, prefs.breakMinutes()) * 60_000L;
+            if (active) {
+                screenIdleSince = 0L;
+                if (!call && now > graceUntil) {
+                    nightScreenMs += delta;
+                    if (now - lastNightSaveTs > 20_000L) { lastNightSaveTs = now; prefs.setScreenUsedMs(nightScreenMs); }
+                    if (nightScreenMs >= Math.max(1, prefs.screenMin()) * 60_000L) { triggerNightBreak(); return; }
+                }
+            } else {
+                if (screenIdleSince == 0L) screenIdleSince = now;
+                else if (nightScreenMs != 0L && now - screenIdleSince >= restMs) {
+                    nightScreenMs = 0L;
+                    prefs.setScreenUsedMs(0L);
+                }
             }
         } else if (nightScreenMs != 0L) {
-            nightScreenMs = 0L;                 // خرجنا من فترة الليل: يبدأ العدّ من جديد الليلة القادمة
-            prefs.setNightScreenUsedMs(0L);
+            nightScreenMs = 0L;
+            prefs.setScreenUsedMs(0L);
         }
 
         Set<String> playing = active ? KidsNotificationListener.playingPackages(this) : null;
@@ -630,7 +641,7 @@ public class MonitorService extends Service {
     private void triggerNightBreak() {
         long now = System.currentTimeMillis();
         nightScreenMs = 0L;
-        prefs.setNightScreenUsedMs(0L);
+        prefs.setScreenUsedMs(0L);
         locked = true;
         lockedCat = AppClassifier.CAT_YT;
         prefs.setLocked(true, lockedCat);

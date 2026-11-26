@@ -253,15 +253,39 @@ public class Prefs {
     public void setSchedTo(int v)     { sp.edit().putInt(K_SCHED_TO, v).apply(); }
 
     /** هل نحن الآن داخل فترة التعطيل (فتُوقَف المراقبة)؟ */
+    /** أيام الدوام (أرقام Calendar: الأحد=1 .. السبت=7)، الافتراضي الأحد–الخميس. */
+    public java.util.Set<String> schedDays() {
+        java.util.Set<String> def = new java.util.HashSet<>();
+        for (int d = 1; d <= 5; d++) def.add(String.valueOf(d));
+        return new java.util.HashSet<>(sp.getStringSet("sched_days", def));
+    }
+    public void setSchedDays(java.util.Set<String> v) {
+        sp.edit().putStringSet("sched_days", new java.util.HashSet<>(v)).apply();
+    }
+
+    /** وقت الدوام الآن؟ (الساعات + الأيام المختارة) — تتوقف المراقبة خلاله. */
     public boolean inPauseWindow() {
         if (!schedOn()) return false;
         java.util.Calendar c = nowCal();
         int m = c.get(java.util.Calendar.HOUR_OF_DAY) * 60 + c.get(java.util.Calendar.MINUTE);
+        int dow = c.get(java.util.Calendar.DAY_OF_WEEK);
         int from = schedFrom(), to = schedTo();
         if (from == to) return false;
-        if (from < to) return m >= from && m < to;      // نفس اليوم
-        return m >= from || m < to;                       // يمتد عبر منتصف الليل
+        java.util.Set<String> days = schedDays();
+        if (from < to) return m >= from && m < to && days.contains(String.valueOf(dow));   // نفس اليوم
+        // يمتد عبر منتصف الليل: الجزء بعد منتصف الليل يتبع يوم البداية (أمس)
+        if (m >= from) return days.contains(String.valueOf(dow));
+        if (m < to) return days.contains(String.valueOf(dow == 1 ? 7 : dow - 1));
+        return false;
     }
+
+    // ===== حد وقت الشاشة العام (مستقل عن قيود الليل) =====
+    public boolean screenOn()             { return sp.getBoolean("screen_on", false); }
+    public void setScreenOn(boolean v)    { sp.edit().putBoolean("screen_on", v).apply(); }
+    public int screenMin()                { return sp.getInt("screen_min", 60); }
+    public void setScreenMin(int v)       { sp.edit().putInt("screen_min", Math.max(1, v)).apply(); }
+    public long screenUsedMs()            { return sp.getLong("screen_used_ms", 0L); }
+    public void setScreenUsedMs(long v)   { sp.edit().putLong("screen_used_ms", v).apply(); }
 
     // ===== قيود الليل =====
     public boolean nightOn() { return sp.getBoolean(K_NIGHT_ON, true); }
@@ -460,10 +484,11 @@ public class Prefs {
             o.put("yt", ytLimit());         o.put("game", gameLimit());
             o.put("cooldown", cooldownSec());
             o.put("sched_on", schedOn());   o.put("sched_from", schedFrom()); o.put("sched_to", schedTo());
+            o.put("sched_days", new org.json.JSONArray(schedDays()));
+            o.put("screen_on", screenOn()); o.put("screen_min", screenMin());
             o.put("relax_on", relaxOn());   o.put("relax_limit", relaxLimit());
             o.put("relax_days", new org.json.JSONArray(relaxDays()));
             o.put("night_on", nightOn());   o.put("night_from", nightFrom()); o.put("night_to", nightTo()); o.put("night_limit", nightLimit());
-            o.put("night_screen", nightScreenMin());
             o.put("break_min", breakMinutes()); o.put("break_thr", breakThreshold());
             o.put("resume_min", resumeMinutes());
             o.put("revert_on", revertOn()); o.put("revert_min", revertMinutes());
@@ -492,7 +517,9 @@ public class Prefs {
         if (o.has("night_from"))  e.putInt(K_NIGHT_FROM, o.optInt("night_from", nightFrom()));
         if (o.has("night_to"))    e.putInt(K_NIGHT_TO, o.optInt("night_to", nightTo()));
         if (o.has("night_limit")) e.putInt(K_NIGHT_LIMIT, o.optInt("night_limit", nightLimit()));
-        if (o.has("night_screen")) e.putInt(K_NIGHT_SCREEN, Math.max(0, o.optInt("night_screen", nightScreenMin())));
+        if (o.has("screen_on"))   e.putBoolean("screen_on", o.optBoolean("screen_on", screenOn()));
+        if (o.has("screen_min"))  e.putInt("screen_min", Math.max(1, o.optInt("screen_min", screenMin())));
+        e.putInt(K_NIGHT_SCREEN, 0);   // حد الشاشة الليلي القديم أُلغي (صار حد الشاشة مستقلاً)
         if (o.has("break_min"))   e.putInt(K_BREAK_MIN, o.optInt("break_min", breakMinutes()));
         if (o.has("break_thr"))   e.putInt(K_BREAK_THRESHOLD, o.optInt("break_thr", breakThreshold()));
         if (o.has("resume_min"))  e.putInt(K_RESUME_MIN, o.optInt("resume_min", resumeMinutes()));
@@ -501,6 +528,12 @@ public class Prefs {
         if (o.has("exc_fb"))      e.putBoolean(K_EXCLUDE_FB, o.optBoolean("exc_fb", excludeFb()));
         if (o.has("exc_ig"))      e.putBoolean(K_EXCLUDE_IG, o.optBoolean("exc_ig", excludeIg()));
         e.apply();
+        if (o.has("sched_days")) {
+            java.util.Set<String> s = new java.util.HashSet<>();
+            org.json.JSONArray a = o.optJSONArray("sched_days");
+            if (a != null) for (int i = 0; i < a.length(); i++) s.add(a.optString(i));
+            putSet("sched_days", s);
+        }
         if (o.has("relax_days")) {
             java.util.Set<String> s = new java.util.HashSet<>();
             org.json.JSONArray a = o.optJSONArray("relax_days");

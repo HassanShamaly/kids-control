@@ -118,7 +118,7 @@ public class KidsAccessibilityService extends AccessibilityService {
     }
 
     /** أثناء القفل: أي نافذة تُفتح خلف/فوق الطبقة تُغلق (لوحة الحافة، التطبيقات الأخيرة، أي تطبيق). */
-    private void handleLocked(String pkg, String cls) {
+    private void handleLocked(String pkg, String cls, CharSequence title) {
         // الشاشة مطفأة أو قفل الجوال الأصلي ظاهر: لا نفعل شيئاً. أي «رجوع/رئيسية» هنا كان
         // يوقظ الشاشة (أحداث شاشة العرض الدائم AOD) فتظل تفتح وتطفئ طوال الاستراحة.
         if (!screenInUse()) return;
@@ -128,6 +128,15 @@ public class KidsAccessibilityService extends AccessibilityService {
         if (pkg.equals("com.android.systemui") || pkg.equals("android")) return;   // الإشعارات، قائمة التشغيل، الطوارئ
         if (pkg.contains("packageinstaller") && prefs != null && prefs.installActive()) return;
         if (pkg.contains("inputmethod") || pkg.contains("keyboard") || pkg.contains("honeyboard")) return;
+        // استراحة القرآن: صحبة القرآن وحدها مسموحة؛ أي نافذة أخرى تُنهي الإذن وتعيد الاستراحة
+        if (QuranPass.active()) {
+            if (QuranPass.isSohbaWindow(this, pkg, cls, title)) return;
+            QuranPass.end();
+            try {
+                startService(new Intent(this, MonitorService.class).setAction(MonitorService.ACTION_RESHOW_OVERLAY));
+            } catch (Throwable ignored) { }
+            if (isLauncher(pkg)) return;   // خرج للرئيسية: تعود طبقة الاستراحة، لا حاجة لضغط «الرئيسية»
+        }
         long now = SystemClock.uptimeMillis();
         if (now < ignoreUntil) return;
         if (isEdgePanel(pkg)) {
@@ -201,7 +210,12 @@ public class KidsAccessibilityService extends AccessibilityService {
                 if (cls != null && isActivity(pkg, cls.toString())) {
                     foregroundPkg = pkg;
                 }
-                if (lockdown) { handleLocked(pkg, cls != null ? cls.toString() : null); return; }
+                if (lockdown) {
+                    java.util.List<CharSequence> tx = e.getText();
+                    CharSequence title = (tx != null && !tx.isEmpty()) ? tx.get(0) : null;
+                    handleLocked(pkg, cls != null ? cls.toString() : null, title);
+                    return;
+                }
             }
             if (lockdown && !GUARDED.contains(pkg)) return;   // أثناء القفل: لا نعالج محتوى بقية التطبيقات
 

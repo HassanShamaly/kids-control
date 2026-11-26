@@ -247,7 +247,10 @@ public class MonitorService extends Service {
             return START_STICKY;
         }
         if (ACTION_RESHOW_OVERLAY.equals(action)) {
-            if (bgHandler != null) bgHandler.post(() -> overlaySuppressUntil = 0L);
+            if (bgHandler != null) bgHandler.post(() -> {
+                overlaySuppressUntil = 0L;
+                if (locked && !overlayVisible && !QuranPass.active()) postShowOverlay(lockedCat);
+            });
             return START_STICKY;
         }
         if (ACTION_EMERGENCY.equals(action)) {
@@ -346,6 +349,11 @@ public class MonitorService extends Service {
         if (locked) {
             boolean onBreak = breakUntil > now;
             if (!onBreak && breakUntil > 0) { endBreakToFingerprint(); return; } // انتهى العدّاد → تُطلب البصمة
+            if (QuranPass.active()) {
+                // استراحة القرآن جارية: لا طبقة ولا إيقاف للصوت (التلاوة تعمل). الحارس يعيد الطبقة عند الخروج.
+                if (!KidsAccessibilityService.isRunning()) { QuranPass.end(); }
+                else { if (onBreak) updateOverlayBreak(now); return; }
+            }
             if (!screenOnNow) {
                 // الشاشة مطفأة: لا تحديث للعدّاد ولا للإشعار (لا أحد يراه)؛ فقط أوقف أي صوت يعمل
                 if (am != null && am.isMusicActive()) { pauseMedia(); KidsNotificationListener.pauseAll(this); }
@@ -676,6 +684,7 @@ public class MonitorService extends Service {
      * يتطلب بصمة ولي الأمر للمتابعة (مع بدء جلسة جديدة بعد الفتح).
      */
     private void endBreakToFingerprint() {
+        QuranPass.end();
         breakUntil = 0L;
         overlaySuppressUntil = 0L;
         unlockCount = 0;
@@ -797,6 +806,14 @@ public class MonitorService extends Service {
         // على جهاز الطفل لا مخرج محلي أثناء الاستراحة (الطوارئ من جوال ولي الأمر).
         // على جهازك (ولي الأمر/غير مُدار) يبقى زر الفتح متاحاً دائماً بالرقم السري.
         boolean childDevice = prefs.isChild();
+        // اقتراح مراجعة القرآن أثناء الاستراحة (على كل الأجهزة)
+        View qBox = overlay.findViewById(R.id.quran_box);
+        if (qBox != null) {
+            boolean canQuran = onBreak && KidsAccessibilityService.isRunning() && QuranPass.launchIntent(this) != null;
+            qBox.setVisibility(canQuran ? View.VISIBLE : View.GONE);
+            View qb = overlay.findViewById(R.id.btn_quran);
+            if (qb != null) qb.setOnClickListener(v -> startQuranPass());
+        }
         if (onBreak && childDevice) {
             // أثناء الاستراحة: عدّاد فقط بلا زر. الفتح من جوال ولي الأمر فقط.
             bu.setVisibility(View.GONE);
@@ -821,6 +838,23 @@ public class MonitorService extends Service {
         lp.gravity = Gravity.CENTER;
         setupPinPanel();
         try { wm.addView(overlay, lp); } catch (Throwable t) { overlay = null; }
+    }
+
+    /** يفتح صحبة القرآن أثناء الاستراحة ويرفع الطبقة ما دامت هي الظاهرة. */
+    private void startQuranPass() {
+        long now = System.currentTimeMillis();
+        if (breakUntil <= now || !KidsAccessibilityService.isRunning()) return;
+        final Intent i = QuranPass.launchIntent(this);
+        if (i == null) return;
+        QuranPass.start(breakUntil);
+        postRemoveOverlay();
+        uiHandler.postDelayed(() -> {
+            try { startActivity(i); }
+            catch (Throwable t) {
+                QuranPass.end();
+                if (bgHandler != null) bgHandler.post(() -> { if (locked) postShowOverlay(lockedCat); });
+            }
+        }, 150L);
     }
 
     // ================= لوحة الرقم السري داخل طبقة القفل (الخيط الرئيسي) =================
@@ -864,6 +898,8 @@ public class MonitorService extends Service {
         if (bu != null) bu.setVisibility(View.GONE);
         View icon = overlay.findViewById(R.id.lock_icon);
         if (icon != null) icon.setVisibility(View.GONE);
+        View qBox = overlay.findViewById(R.id.quran_box);
+        if (qBox != null) qBox.setVisibility(View.GONE);   // مساحة للوحة الأرقام
         pinBuf.setLength(0);
         renderPinDots();
         if (prefs.pinLocked()) setPinError(getString(R.string.pin_locked_fmt, (int) ((prefs.pinLockedSec() + 59) / 60)));

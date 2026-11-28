@@ -1176,14 +1176,12 @@ public class MainActivity extends AppCompatActivity {
         TextView tv = new TextView(this);
         android.text.SpannableString ss = new android.text.SpannableString(title + "\n" + sub);
         ss.setSpan(new android.text.style.StyleSpan(android.graphics.Typeface.BOLD), 0, title.length(), 0);
-        ss.setSpan(new android.text.style.ForegroundColorSpan(getColor(R.color.accent)), 0, title.length(), 0);
         ss.setSpan(new android.text.style.RelativeSizeSpan(0.8f), title.length(), ss.length(), 0);
-        ss.setSpan(new android.text.style.ForegroundColorSpan(getColor(R.color.hint)), title.length(), ss.length(), 0);
         tv.setText(ss);
         tv.setTextSize(18f);
         tv.setTextColor(getColor(R.color.text));
-        tv.setBackgroundResource(R.drawable.card_bg);
-        int pad = (int) (18 * getResources().getDisplayMetrics().density);
+        tv.setBackgroundResource(R.drawable.field_bg);
+        int pad = (int) (16 * getResources().getDisplayMetrics().density);
         tv.setPadding(pad, pad, pad, pad);
         tv.setLineSpacing(pad / 4f, 1f);
         android.widget.LinearLayout.LayoutParams lp = new android.widget.LinearLayout.LayoutParams(

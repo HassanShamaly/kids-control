@@ -1,19 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- لوحة الألوان مأخوذة من «صحبة القرآن» ليتناسق التطبيقان: أخضر داكن + ذهبي -->
-    <color name="bg">#0D1412</color>
-    <color name="card">#16211D</color>
-    <color name="card2">#1C2A25</color>
-    <color name="text">#E8E4D9</color>
-    <color name="hint">#8A968F</color>
-    <color name="accent">#D4AF6A</color>
-    <color name="accent_dark">#B8955A</color>
-    <color name="on_accent">#0D1412</color>
-    <color name="accent2">#4CAF7D</color>
-    <color name="danger">#E05D5D</color>
+    <color name="bg">#0E1626</color>
+    <color name="card">#18233A</color>
+    <color name="card2">#1F2C47</color>
+    <color name="text">#EAF0FA</color>
+    <color name="hint">#93A1BC</color>
+    <color name="accent">#2FA36B</color>
+    <color name="accent_dark">#238055</color>
+    <color name="accent2">#3B82F6</color>
+    <color name="danger">#D9534F</color>
     <color name="warn">#E0A106</color>
-    <color name="lock_bg">#FF0D1412</color>
-    <color name="divider">#2A3A33</color>
-    <color name="border">#2A3A33</color>
-    <color name="ripple">#33D4AF6A</color>
+    <color name="lock_bg">#FF0B0F14</color>
+    <color name="divider">#27344F</color>
 </resources>
